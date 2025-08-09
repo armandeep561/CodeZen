@@ -1,0 +1,392 @@
+/* --- 1. THEME & FONT DEFINITIONS --- */
+:root {
+    --bg-base: #1E1E1E;
+    --bg-panel: #252526;
+    --bg-hover: #2A2D2E;
+    --bg-active: #37373D;
+    --border-color: #333333;
+    --text-primary: #CCCCCC;
+    --text-secondary: #858585;
+    --text-active: #FFFFFF;
+    --font-sans: 'Ubuntu', sans-serif;
+    --font-mono: 'Fira Code', monospace;
+    --font-size-base: 13px;
+    --border-radius: 5px;
+    --transition-speed: 0.15s;
+    --sidebar-width: 48px;
+    --explorer-width: 220px;
+    --top-bar-height: 40px;
+    --tabs-height: 35px;
+    --console-height: 28px;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    margin: 0;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    height: 100vh;
+}
+
+i {
+    stroke-width: 1.5;
+}
+
+/* --- 2. MAIN IDE GRID LAYOUT --- */
+.ide-container {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) var(--explorer-width) 1fr 1fr;
+    grid-template-rows: var(--top-bar-height) 1fr var(--console-height);
+    grid-template-areas:
+        "logo-header  main    main    preview"
+        "sidebar      explorer main    preview"
+        "sidebar      explorer console console";
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.logo-header {
+    grid-area: logo-header;
+}
+
+.sidebar {
+    grid-area: sidebar;
+}
+
+.file-explorer {
+    grid-area: explorer;
+}
+
+.main-content {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-area {
+    grid-area: preview;
+    display: flex;
+    flex-direction: column;
+}
+
+.console-footer {
+    grid-area: console;
+}
+
+/* --- 3. COMPONENTS --- */
+.logo-header {
+    background-color: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar {
+    background-color: var(--bg-panel);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-speed) ease;
+}
+
+.sidebar button:hover {
+    color: var(--text-active);
+}
+
+.sidebar button.active {
+    color: var(--text-active);
+}
+
+.sidebar .sidebar-footer {
+    margin-top: auto;
+}
+
+.sidebar i {
+    width: 22px;
+    height: 22px;
+}
+
+.file-explorer {
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    padding: 5px;
+    overflow-y: auto;
+    user-select: none;
+}
+
+ul.file-tree,
+ul.file-tree ul {
+    list-style: none;
+    padding-left: 15px;
+}
+
+ul.file-tree {
+    padding-left: 0;
+}
+
+.file-item,
+.folder-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color var(--transition-speed) ease;
+}
+
+.file-item:hover,
+.folder-item-header:hover {
+    background-color: var(--bg-hover);
+}
+
+.file-item.active {
+    background-color: var(--bg-active);
+}
+
+.file-item i,
+.folder-item-header i {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.folder-item-header .chevron {
+    transition: transform var(--transition-speed) ease;
+}
+
+.folder-item.closed>.folder-item-header .chevron {
+    transform: rotate(-90deg);
+}
+
+.main-content {
+    overflow: hidden;
+    background-color: var(--bg-base);
+}
+
+.editor-header {
+    display: flex;
+    align-items: center;
+    height: var(--top-bar-height);
+    background-color: var(--bg-panel);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 5px;
+    flex-shrink: 0;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+}
+
+.action-buttons button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.action-buttons button:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-active);
+}
+
+.action-buttons i {
+    width: 18px;
+}
+
+.action-buttons .divider {
+    width: 1px;
+    height: 16px;
+    background-color: var(--border-color);
+    margin: 0 5px;
+}
+
+#tabs-container {
+    display: flex;
+    height: 100%;
+    overflow-x: auto;
+    flex-grow: 1;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border-right: 1px solid var(--border-color);
+    cursor: pointer;
+    color: var(--text-secondary);
+    background-color: var(--bg-panel);
+    flex-shrink: 0;
+}
+
+.tab.active {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+}
+
+.tab i {
+    width: 16px;
+    height: 16px;
+}
+
+.tab .close-tab-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 2px;
+    border-radius: 50%;
+    display: flex;
+}
+
+.tab .close-tab-btn:hover {
+    background-color: var(--bg-hover);
+}
+
+.editor-options {
+    margin-left: auto;
+    padding: 0 5px;
+}
+
+.editor-options button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+}
+
+#editor-container {
+    height: 100%;
+    overflow: hidden;
+}
+
+.CodeMirror {
+    height: 100% !important;
+    font-size: 14px;
+    background: var(--bg-base) !important;
+}
+
+.CodeMirror-gutters {
+    background: var(--bg-base) !important;
+    border-right: 0 !important;
+}
+
+.CodeMirror-scroll {
+    overflow: auto !important;
+}
+
+.preview-area {
+    background-color: var(--bg-panel);
+    border-left: 1px solid var(--border-color);
+    height: 100%;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    height: var(--top-bar-height);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+#preview-container {
+    height: 100%;
+    overflow: hidden;
+    background: white;
+}
+
+#preview-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+}
+
+.console-footer {
+    background-color: var(--bg-base);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+}
+
+#console-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    height: 100%;
+    cursor: pointer;
+    width: 100%;
+}
+
+#console-toggle-btn i {
+    transition: transform var(--transition-speed) ease;
+}
+
+#output-container {
+    display: none;
+    position: fixed;
+    bottom: var(--console-height);
+    grid-column: 3 / span 2;
+    left: calc(var(--sidebar-width) + var(--explorer-width));
+    right: 0;
+    height: 150px;
+    background-color: #0d0d0d;
+    border-top: 1px solid var(--border-color);
+    z-index: 50;
+}
+
+#output-container.active {
+    display: block;
+}
+
+#output-content {
+    padding: 10px;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+    font-family: var(--font-mono);
+    color: #fff;
+}
+
+#output-container.active~.console-footer #console-toggle-btn i {
+    transform: rotate(180deg);
+}
