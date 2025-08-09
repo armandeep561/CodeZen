@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,62 +7,57 @@
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Fira+Code&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Fira+Code&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-
+    
     <!-- CodeMirror -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material-darker.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/theme/material-darker.min.css">
+    
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
     <div class="ide-container">
-        <header class="logo-header">codezen</header>
-
         <aside class="sidebar">
             <nav>
                 <button class="active" title="Files"><i data-lucide="files"></i></button>
                 <button title="Search"><i data-lucide="search"></i></button>
                 <button title="Source Control"><i data-lucide="git-branch-plus"></i></button>
+                <button title="Run & Debug"><i data-lucide="play-circle"></i></button>
                 <button title="Extensions"><i data-lucide="puzzle"></i></button>
             </nav>
             <div class="sidebar-footer">
-                <button title="Toggle Theme"><i data-lucide="sun-moon"></i></button>
+                <button title="Account"><i data-lucide="user-circle"></i></button>
+                <button title="Settings"><i data-lucide="settings"></i></button>
             </div>
         </aside>
 
-        <div id="file-explorer" class="file-explorer"></div>
+        <header class="top-bar">
+            <div class="logo">codezen</div>
+            <div class="action-buttons">
+                <button id="new-file-btn" title="New File"><i data-lucide="file-plus-2"></i></button>
+                <button id="new-folder-btn" title="New Folder"><i data-lucide="folder-plus"></i></button>
+            </div>
+        </header>
 
         <main class="main-content">
-            <div class="editor-header">
-                <div class="action-buttons">
-                    <button id="new-file-btn" title="New File"><i data-lucide="file-plus-2"></i></button>
-                    <button id="new-folder-btn" title="New Folder"><i data-lucide="folder-plus"></i></button>
-                    <div class="divider"></div>
-                    <button title="Undo"><i data-lucide="undo-2"></i></button>
-                    <button title="Redo"><i data-lucide="redo-2"></i></button>
-                </div>
-                <div id="tabs-container"></div>
-                <div class="editor-options">
-                    <button title="Editor Settings"><i data-lucide="ellipsis"></i></button>
-                </div>
-            </div>
-            <div id="editor-container"></div>
-        </main>
+            <div id="file-explorer" class="file-explorer"></div>
 
-        <aside class="preview-area">
-            <div class="preview-header">
-                <i data-lucide="globe"></i>
-                <span>Preview</span>
+            <div class="editor-area">
+                <div id="tabs-container"></div>
+                <div id="editor-container"></div>
             </div>
-            <div id="preview-container">
-                <iframe id="preview-frame"></iframe>
+
+            <div class="preview-area">
+                <div class="preview-header">
+                    <i data-lucide="globe"></i>
+                    <span>Preview</span>
+                </div>
+                <div id="preview-container">
+                    <iframe id="preview-frame"></iframe>
+                </div>
             </div>
-        </aside>
+        </main>
 
         <footer class="console-footer">
             <button id="console-toggle-btn">
@@ -83,7 +77,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/clike/clike.min.js"></script>
-    <script src="main.js"></script>
+    <script src="script.js"></script>
 </body>
-
 </html>
