@@ -8,7 +8,6 @@ import {
   Send,
   Code,
   Files,
-  Settings,
   Search,
   X,
   type LucideIcon,
@@ -16,6 +15,7 @@ import {
   Play,
   FolderPlus,
   FilePlus,
+  PanelLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -224,16 +224,29 @@ export default function PolyglotStudio() {
   const code = activeFile?.content ?? '';
 
   const getFullHtml = useCallback(() => {
-    const htmlFile = files.find(f => f.name === 'index.html');
-    if (!htmlFile) return '<h1>index.html not found</h1>';
+    const htmlFile = files.find(f => f.language === 'html');
+    if (!htmlFile) return '<h1>No HTML file found to display.</h1><p>Please create an HTML file (e.g., index.html) to see a preview.</p>';
 
     let htmlContent = htmlFile.content || '';
 
-    const cssFile = files.find(f => f.name === 'style.css');
-    if (cssFile && cssFile.content) {
-      htmlContent = htmlContent.replace('</head>', `<style>${cssFile.content}</style></head>`);
-    }
+    // Create a map of file names to content for quick lookup
+    const fileContentMap = new Map(files.map(f => [f.name, f.content]));
 
+    // Inject CSS
+    const cssLinkRegex = /<link\s+[^>]*?href="([^"]+)"[^>]*?rel="stylesheet"[^>]*?>/g;
+    htmlContent = htmlContent.replace(cssLinkRegex, (match, href) => {
+      const cssContent = fileContentMap.get(href);
+      return cssContent ? `<style>${cssContent}</style>` : match;
+    });
+    
+    // Inject JS
+    const scriptTagRegex = /<script\s+[^>]*?src="([^"]+)"[^>]*?>\s*<\/script>/g;
+    htmlContent = htmlContent.replace(scriptTagRegex, (match, src) => {
+      const jsContent = fileContentMap.get(src);
+      return jsContent ? `<script>${jsContent}</script>` : match;
+    });
+
+    // Inject console interceptor
     const consoleInterceptor = `
       <script>
         const originalLog = console.log;
@@ -254,13 +267,12 @@ export default function PolyglotStudio() {
         };
       </script>
     `;
-    htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}`);
-
-    const jsFile = files.find(f => f.name === 'script.js');
-    if (jsFile && jsFile.content) {
-      htmlContent = htmlContent.replace('</body>', `<script>${jsFile.content}</script></body>`);
+    if (htmlContent.includes('<head>')) {
+      htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}`);
+    } else {
+      htmlContent = consoleInterceptor + htmlContent;
     }
-
+    
     return htmlContent;
   }, [files]);
 
@@ -591,7 +603,7 @@ export default function PolyglotStudio() {
         <SideBarButton Icon={Files} panel="explorer" />
         <SideBarButton Icon={Search} panel="search" />
         <Button variant="ghost" size="icon" className="h-12 w-12">
-          <Code className="w-6 h-6" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-hexagon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
         </Button>
         <div className="mt-auto flex flex-col items-center">
             <Button variant="ghost" size="icon" className="h-12 w-12">
@@ -605,19 +617,21 @@ export default function PolyglotStudio() {
       
       {isExplorerOpen && (
         <div className="w-64 bg-card border-r flex flex-col shrink-0">
+            <div className="p-2 border-b h-12 flex items-center justify-between">
+                <h2 className="text-sm font-semibold tracking-widest uppercase">{activePanel === 'explorer' ? 'Explorer' : 'Search'}</h2>
+                 {activePanel === 'explorer' && (
+                    <div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setNewEntry({parentId: null, type: 'folder'})}>
+                            <FolderPlus className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setNewEntry({parentId: null, type: 'file'})}>
+                            <FilePlus className="w-4 h-4" />
+                        </Button>
+                    </div>
+                )}
+            </div>
             {activePanel === 'explorer' && (
                 <>
-                  <div className="p-2 border-b h-12 flex items-center justify-between">
-                      <h2 className="text-sm font-semibold tracking-widest uppercase">Explorer</h2>
-                      <div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setNewEntry({parentId: null, type: 'folder'})}>
-                              <FolderPlus className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setNewEntry({parentId: null, type: 'file'})}>
-                              <FilePlus className="w-4 h-4" />
-                          </Button>
-                      </div>
-                  </div>
                   <ScrollArea className="flex-1">
                   <FileExplorer
                       files={files}
@@ -635,7 +649,6 @@ export default function PolyglotStudio() {
             )}
              {activePanel === 'search' && (
                 <div className="p-4 flex flex-col gap-4 h-full">
-                    <h2 className="text-lg font-semibold">Search</h2>
                     <Input 
                       placeholder="Search across all files..."
                       value={searchQuery}
@@ -666,88 +679,86 @@ export default function PolyglotStudio() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center border-b border-t h-12 pr-4">
-            <div
-              ref={tabsContainerRef}
-              className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
-              onWheel={handleWheelScroll}
-            >
-              {openFileIds.map(fileId => {
-                const file = files.find(f => f.id === fileId);
-                if (!file) return null;
-                return (
-                  <div
-                    key={fileId}
-                    onClick={() => {
-                      handleFileSelect(fileId);
-                      setActiveView('editor');
-                    }}
-                    className={cn(
-                      'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12',
-                      activeFileId === fileId && activeView === 'editor'
-                        ? 'bg-accent text-accent-foreground'
-                        : 'hover:bg-accent/50'
-                    )}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span className="truncate">{file.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-6 h-6 -mr-2 rounded-full"
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleCloseTab(fileId);
+         <div className="flex items-center border-b h-12 pr-4 bg-card">
+              <div
+                ref={tabsContainerRef}
+                className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
+                onWheel={handleWheelScroll}
+              >
+                 {openFileIds.map(fileId => {
+                  const file = files.find(f => f.id === fileId);
+                  if (!file) return null;
+                  return (
+                    <div
+                      key={fileId}
+                      onClick={() => {
+                        handleFileSelect(fileId);
+                        setActiveView('editor');
                       }}
+                      className={cn(
+                        'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12',
+                        activeFileId === fileId && activeView === 'editor'
+                          ? 'bg-background'
+                          : 'hover:bg-accent/50'
+                      )}
                     >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-2 ml-auto pl-4">
-                <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!activeFile}>
-                  <Download className="w-4 h-4" />
-                  Download
-                </Button>
-                <Button size="sm" onClick={() => execute()} disabled={isExecuting}>
-                  <Play className="w-4 h-4" />
-                  Run
-                </Button>
-            </div>
+                      <FileText className="w-4 h-4" />
+                      <span className="truncate">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 -mr-2 rounded-full"
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleCloseTab(fileId);
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-2 ml-auto pl-4">
+                  <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!activeFile}>
+                    <Download className="w-4 h-4" />
+                    Download
+                  </Button>
+                  <Button size="sm" onClick={() => execute()} disabled={isExecuting}>
+                    <Play className="w-4 h-4" />
+                    Run
+                  </Button>
+              </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
-            {/* Editor/Main Panel */}
-            <div className="flex flex-col h-full">
-              <MainContent
-                activeView={activeView}
-                activeOutputTab={activeOutputTab}
-                setActiveOutputTab={setActiveOutputTab}
-                output={output}
-                history={history}
-                isExecuting={isExecuting}
-                selectedLanguage={selectedLanguage}
-                outputEndRef={outputEndRef}
-                handleUserInputSubmit={handleUserInputSubmit}
-                userInput={userInput}
-                setUserInput={setUserInput}
-                editorRef={editorRef}
-                activeFileId={activeFileId}
-                code={code}
-                setCode={setCode}
-                activeFile={activeFile}
+            <div className="flex flex-col h-full bg-background relative">
+               <MainContent
+                  activeView={activeView}
+                  activeOutputTab={activeOutputTab}
+                  setActiveOutputTab={setActiveOutputTab}
+                  output={output}
+                  history={history}
+                  isExecuting={isExecuting}
+                  selectedLanguage={selectedLanguage}
+                  outputEndRef={outputEndRef}
+                  handleUserInputSubmit={handleUserInputSubmit}
+                  userInput={userInput}
+                  setUserInput={setUserInput}
+                  editorRef={editorRef}
+                  activeFileId={activeFileId}
+                  code={code}
+                  setCode={setCode}
+                  activeFile={activeFile}
                />
             </div>
             
-            {/* Output Panel */}
-            <div className="flex flex-col h-full border-l">
+            <div className="flex flex-col h-full border-l bg-card">
               <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
                   <div className="flex-shrink-0 border-b h-12">
                       <TabsList className="bg-transparent rounded-none p-0 m-0 h-full">
-                          <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-primary">Preview</TabsTrigger>
-                          <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-primary">Console</TabsTrigger>
+                          <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:bg-background data-[state=active]:border-b-2 border-primary">Preview</TabsTrigger>
+                          <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:bg-background data-[state=active]:border-b-2 border-primary">Console</TabsTrigger>
                       </TabsList>
                   </div>
                   <TabsContent value="preview" className="flex-1 bg-white m-0">
@@ -813,8 +824,3 @@ export default function PolyglotStudio() {
     </div>
   );
 }
-
-    
-    
-
-    
