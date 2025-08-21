@@ -16,6 +16,7 @@ import {
   FolderPlus,
   FilePlus,
   PanelLeft,
+  BookTemplate,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -26,6 +27,7 @@ import {
   languages,
   templates,
   type LanguageValue,
+  type Language,
 } from '@/lib/templates';
 import { runCode } from '@/app/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -74,7 +76,7 @@ const initialFiles: FileNode[] = [
   },
 ];
 
-type Panel = 'explorer' | 'search';
+type Panel = 'explorer' | 'search' | 'templates';
 type ActiveView = 'editor' | 'output';
 type OutputTab = 'preview' | 'console';
 
@@ -208,6 +210,39 @@ export default function PolyglotStudio() {
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [newEntry, setNewEntry] = useState<{ parentId: string | null, type: 'file' | 'folder' } | null>(null);
 
+  const webTemplate: FileNode[] = [
+    { id: 'html:1', name: 'index.html', content: templates.html.code, language: 'html', parentId: null, type: 'file' },
+    { id: 'css:1', name: 'style.css', content: '/* Add your CSS here */', language: 'css', parentId: null, type: 'file' },
+    { id: 'js:1', name: 'script.js', content: 'console.log("Hello from script.js!");', language: 'javascript', parentId: null, type: 'file' },
+  ];
+
+  const presetTemplates: Record<string, {name: string, files: FileNode[]}> = {
+    'web': {
+      name: 'Web App (HTML, CSS, JS)',
+      files: webTemplate
+    },
+    'python': {
+      name: 'Python',
+      files: [{ id: 'python:1', name: 'main.py', content: templates.python.code, language: 'python', parentId: null, type: 'file' }]
+    },
+    'php': {
+      name: 'PHP',
+      files: [{ id: 'php:1', name: 'index.php', content: templates.php.code, language: 'php', parentId: null, type: 'file' }]
+    },
+    'c': {
+      name: 'C',
+      files: [{ id: 'c:1', name: 'main.c', content: templates.c.code, language: 'c', parentId: null, type: 'file' }]
+    },
+    'cpp': {
+      name: 'C++',
+      files: [{ id: 'cpp:1', name: 'main.cpp', content: templates.cpp.code, language: 'cpp', parentId: null, type: 'file' }]
+    },
+    'java': {
+        name: 'Java',
+        files: [{ id: 'java:1', name: 'HelloWorld.java', content: templates.java.code, language: 'java', parentId: null, type: 'file' }]
+    }
+  }
+
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const selectedLanguage =
@@ -224,7 +259,7 @@ export default function PolyglotStudio() {
   const code = activeFile?.content ?? '';
 
   const getFullHtml = useCallback(() => {
-    const htmlFile = files.find(f => f.name === 'index.html') || files.find(f => f.language === 'html');
+    const htmlFile = files.find(f => f.name.endsWith('.html'));
     if (!htmlFile) {
         return '<h1>No HTML file found to display.</h1><p>Please create an HTML file (e.g., index.html) to see a preview.</p>';
     }
@@ -247,7 +282,7 @@ export default function PolyglotStudio() {
           originalWarn.apply(console, args);
         };
         console.error = (...args) => {
-          window.parent.postMessage({ type: 'console', level: 'error', args: args.map(a => String(a)) }, '*');
+          window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
           originalError.apply(console, args);
         };
         window.addEventListener('error', (e) => {
@@ -257,7 +292,7 @@ export default function PolyglotStudio() {
     `;
 
     if (htmlContent.includes('<head>')) {
-      htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}</head>`);
+      htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}`);
     } else {
       htmlContent = consoleInterceptor + htmlContent;
     }
@@ -584,6 +619,22 @@ export default function PolyglotStudio() {
     }
   }
   
+  const handleTemplateSelect = (templateKey: string) => {
+    const template = presetTemplates[templateKey];
+    if (template) {
+      setFiles(template.files);
+      const firstFile = template.files.find(f => f.type === 'file');
+      if (firstFile) {
+        setOpenFileIds([firstFile.id]);
+        handleFileSelect(firstFile.id);
+      } else {
+        setOpenFileIds([]);
+        setActiveFileId(null);
+      }
+      setActivePanel('explorer');
+    }
+  }
+
   const SideBarButton = ({Icon, panel}: {Icon: LucideIcon, panel: Panel}) => (
      <Button variant={isExplorerOpen && activePanel === panel ? "secondary" : "ghost"} size="icon" className="h-12 w-12" onClick={() => togglePanel(panel)}>
         <Icon className="w-6 h-6" />
@@ -605,6 +656,7 @@ export default function PolyglotStudio() {
          </a>
         <SideBarButton Icon={Files} panel="explorer" />
         <SideBarButton Icon={Search} panel="search" />
+        <SideBarButton Icon={BookTemplate} panel="templates" />
         <div className="mt-auto flex flex-col items-center">
             <Button variant="ghost" size="icon" className="h-12 w-12">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
@@ -618,7 +670,7 @@ export default function PolyglotStudio() {
       {isExplorerOpen && (
         <div className="w-64 bg-card border-r flex flex-col shrink-0">
             <div className="p-2 border-b h-12 flex items-center justify-between">
-                <h2 className="text-sm font-semibold tracking-widest uppercase">{activePanel === 'explorer' ? 'Explorer' : 'Search'}</h2>
+                <h2 className="text-sm font-semibold tracking-widest uppercase">{activePanel}</h2>
                  {activePanel === 'explorer' && (
                     <div>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setNewEntry({parentId: null, type: 'folder'})}>
@@ -675,6 +727,17 @@ export default function PolyglotStudio() {
                     </ScrollArea>
                 </div>
             )}
+            {activePanel === 'templates' && (
+              <div className="p-2">
+                <div className="flex flex-col gap-2">
+                    {Object.entries(presetTemplates).map(([key, {name}]) => (
+                      <Button key={key} variant="ghost" className="justify-start" onClick={() => handleTemplateSelect(key)}>
+                        {name}
+                      </Button>
+                    ))}
+                </div>
+              </div>
+            )}
         </div>
       )}
 
@@ -682,42 +745,46 @@ export default function PolyglotStudio() {
         <div className="flex items-center border-b h-12 pr-2 bg-card">
           <div
             ref={tabsContainerRef}
-            className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
-            onWheel={handleWheelScroll}
+            className="flex items-center flex-1 overflow-hidden h-full"
           >
-            {openFileIds.map(fileId => {
-              const file = files.find(f => f.id === fileId);
-              if (!file) return null;
-              return (
-                <div
-                  key={fileId}
-                  onClick={() => {
-                    handleFileSelect(fileId);
-                    setActiveView('editor');
-                  }}
-                  className={cn(
-                    'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12',
-                    activeFileId === fileId && activeView === 'editor'
-                      ? 'bg-background'
-                      : 'hover:bg-accent/50'
-                  )}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span className="truncate">{file.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-6 h-6 -mr-2 rounded-full"
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleCloseTab(fileId);
+            <div 
+              className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap h-full flex"
+              onWheel={handleWheelScroll}
+            >
+              {openFileIds.map(fileId => {
+                const file = files.find(f => f.id === fileId);
+                if (!file) return null;
+                return (
+                  <div
+                    key={fileId}
+                    onClick={() => {
+                      handleFileSelect(fileId);
+                      setActiveView('editor');
                     }}
+                    className={cn(
+                      'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12 flex-shrink-0',
+                      activeFileId === fileId && activeView === 'editor'
+                        ? 'bg-background'
+                        : 'hover:bg-accent/50'
+                    )}
                   >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              );
-            })}
+                    <FileText className="w-4 h-4" />
+                    <span className="truncate">{file.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-6 h-6 -mr-2 rounded-full"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleCloseTab(fileId);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <div className="flex items-center gap-2 ml-auto pl-4">
               <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!activeFile}>
