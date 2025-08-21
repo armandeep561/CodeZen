@@ -577,9 +577,6 @@ export default function PolyglotStudio() {
         <Button variant="ghost" size="icon" className="h-12 w-12">
           <Code className="w-6 h-6" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-12 w-12">
-          <Hexagon className="w-6 h-6" />
-        </Button>
         <div className="mt-auto flex flex-col items-center">
             <Button variant="ghost" size="icon" className="h-12 w-12">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
@@ -784,4 +781,5 @@ export default function PolyglotStudio() {
   );
 }
 
+    
     
