@@ -226,7 +226,7 @@ function FileOrFolder({ node, onFileSelect, onFileDelete, onFolderDelete, onRena
         >
           <FileText className="w-4 h-4 mr-2" />
           {!isRenaming ? (
-            <span className="flex-1 truncate">{node.name}</span>
+            <span className="flex-1 truncate text-left">{node.name}</span>
           ) : (
              <Input
                 type="text"
@@ -284,5 +284,3 @@ function NewEntryInput({ type, onCreate, onCancel }: NewEntryInputProps) {
     </li>
   )
 }
-
-    
