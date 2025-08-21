@@ -22,8 +22,9 @@ interface FileExplorerProps {
   files: FileNode[];
   onFileSelect: (id: string) => void;
   onFileCreate: (name: string, parentId: string | null) => void;
-  onFileDelete: (id: string) => void;
   onFolderCreate: (name: string, parentId: string | null) => void;
+  onFileDelete: (id: string) => void;
+  onFolderDelete: (id: string) => void;
   onRename: (id: string, newName: string) => void;
 }
 
@@ -31,17 +32,20 @@ export function FileExplorer({
   files,
   onFileSelect,
   onFileCreate,
-  onFileDelete,
   onFolderCreate,
+  onFileDelete,
+  onFolderDelete,
   onRename
 }: FileExplorerProps) {
   
   const [newEntry, setNewEntry] = useState<{ parentId: string | null, type: 'file' | 'folder' } | null>(null);
 
   const handleCreate = (name: string) => {
-    if (newEntry?.type === 'file') {
+    if(!newEntry) return;
+
+    if (newEntry.type === 'file') {
       onFileCreate(name, newEntry.parentId);
-    } else if (newEntry?.type === 'folder') {
+    } else if (newEntry.type === 'folder') {
       onFolderCreate(name, newEntry.parentId);
     }
     setNewEntry(null);
@@ -49,15 +53,18 @@ export function FileExplorer({
   
   const fileTree = React.useMemo(() => {
     const tree: FileNode[] = [];
-    const map: { [key: string]: FileNode } = {};
+    const map: { [key: string]: FileNode & { children: FileNode[] } } = {};
     
     files.forEach(file => {
-      map[file.id] = { ...file, children: file.type === 'folder' ? [] : undefined };
+      map[file.id] = { ...file, children: file.type === 'folder' ? [] : undefined } as FileNode & { children: FileNode[] };
     });
 
     files.forEach(file => {
       if (file.parentId && map[file.parentId]) {
-        map[file.parentId].children?.push(map[file.id]);
+        // The children array might not exist on file types, so we check
+        if(map[file.parentId].children) {
+            map[file.parentId].children.push(map[file.id]);
+        }
       } else {
         tree.push(map[file.id]);
       }
@@ -86,8 +93,10 @@ export function FileExplorer({
             node={node}
             onFileSelect={onFileSelect}
             onFileDelete={onFileDelete}
+            onFolderDelete={onFolderDelete}
             onRename={onRename}
             onSetNewEntry={setNewEntry}
+            newEntry={newEntry}
           />
         ))}
         {newEntry && !newEntry.parentId && (
@@ -106,19 +115,35 @@ interface FileOrFolderProps {
   node: FileNode;
   onFileSelect: (id: string) => void;
   onFileDelete: (id: string) => void;
+  onFolderDelete: (id: string) => void;
   onRename: (id: string, newName: string) => void;
   onSetNewEntry: (entry: { parentId: string | null, type: 'file' | 'folder' } | null) => void;
+  newEntry: { parentId: string | null, type: 'file' | 'folder' } | null;
 }
 
-function FileOrFolder({ node, onFileSelect, onFileDelete, onRename, onSetNewEntry }: FileOrFolderProps) {
+function FileOrFolder({ node, onFileSelect, onFileDelete, onFolderDelete, onRename, onSetNewEntry, newEntry }: FileOrFolderProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(node.name);
 
   const handleRename = () => {
-    onRename(node.id, newName);
+    if(newName.trim() && newName.trim() !== node.name) {
+      onRename(node.id, newName);
+    }
     setIsRenaming(false);
   }
+  
+  const handleCreate = (name: string) => {
+    if(!newEntry) return;
+
+    if (newEntry.type === 'file') {
+      // Assuming onFileCreate is passed down
+    } else if (newEntry.type === 'folder') {
+       // Assuming onFolderCreate is passed down
+    }
+    onSetNewEntry(null);
+  };
+
 
   if (node.type === 'folder') {
     return (
@@ -135,7 +160,7 @@ function FileOrFolder({ node, onFileSelect, onFileDelete, onRename, onSetNewEntr
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onBlur={handleRename}
-                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if(e.key === 'Escape') setIsRenaming(false) }}
                 autoFocus
                 className="h-6"
               />
@@ -149,7 +174,7 @@ function FileOrFolder({ node, onFileSelect, onFileDelete, onRename, onSetNewEntr
                 <Plus className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => setIsRenaming(true)}><Edit className="w-4 h-4"/></Button>
-            <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => onFileDelete(node.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+            <Button variant="ghost" size="icon" className="w-6 h-6" onClick={() => onFolderDelete(node.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
           </div>
         </div>
         {isOpen && (
@@ -160,14 +185,16 @@ function FileOrFolder({ node, onFileSelect, onFileDelete, onRename, onSetNewEntr
                 node={child}
                 onFileSelect={onFileSelect}
                 onFileDelete={onFileDelete}
+                onFolderDelete={onFolderDelete}
                 onRename={onRename}
                 onSetNewEntry={onSetNewEntry}
+                newEntry={newEntry}
               />
             ))}
-            {onSetNewEntry.arguments?.parentId === node.id && (
+            {newEntry && newEntry.parentId === node.id && (
               <NewEntryInput
-                 type={'file'}
-                 onCreate={() => {}}
+                 type={newEntry.type}
+                 onCreate={handleCreate}
                  onCancel={() => onSetNewEntry(null)}
               />
             )}
@@ -196,7 +223,7 @@ function FileOrFolder({ node, onFileSelect, onFileDelete, onRename, onSetNewEntr
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onBlur={handleRename}
-                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); if(e.key === 'Escape') setIsRenaming(false)}}
                 autoFocus
                 className="h-6"
               />

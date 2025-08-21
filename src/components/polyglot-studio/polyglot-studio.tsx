@@ -3,49 +3,32 @@
 import { useState, useCallback, useRef, FormEvent, useEffect } from 'react';
 import {
   Download,
-  Languages,
   Play,
   FileText,
   LoaderCircle,
   Send,
-  Globe,
   Code,
   Files,
   Settings,
   Search,
-  PanelLeft,
   X,
-  ChevronDown,
-  Folder,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
   languages,
   templates,
-  type Language,
   type LanguageValue,
 } from '@/lib/templates';
 import { runCode } from '@/app/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileExplorer, type FileNode } from './file-explorer';
-import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface HistoryItem {
   type: 'output' | 'input';
@@ -58,26 +41,52 @@ const initialFiles: FileNode[] = [
     name: 'index.html',
     content: templates.html.code,
     language: 'html',
+    parentId: null,
+    type: 'file'
+  },
+  {
+    id: 'css:1',
+    name: 'style.css',
+    content: '/* Add your CSS here */',
+    language: 'css',
+    parentId: null,
+    type: 'file'
+  },
+  {
+    id: 'js:1',
+    name: 'script.js',
+    content: 'console.log("Hello from script.js!");',
+    language: 'javascript',
+    parentId: null,
+    type: 'file'
   },
   {
     id: 'python:1',
     name: 'main.py',
     content: templates.python.code,
     language: 'python',
+    parentId: null,
+    type: 'file'
   },
 ];
 
+type Panel = 'explorer' | 'search';
+
 export default function PolyglotStudio() {
   const [files, setFiles] = useState<FileNode[]>(initialFiles);
+  const [openFileIds, setOpenFileIds] = useState<string[]>(['html:1']);
   const [activeFileId, setActiveFileId] = useState<string | null>('html:1');
+
+  const [activePanel, setActivePanel] = useState<Panel>('explorer');
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
 
-  const [output, setOutput] = useState<string>(templates.html.code);
+  const [output, setOutput] = useState<string>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [userInput, setUserInput] = useState('');
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const { toast } = useToast();
   const outputEndRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const selectedLanguage =
@@ -91,15 +100,62 @@ export default function PolyglotStudio() {
       )
     );
   };
-  const code = activeFile?.content || '';
+  const code = activeFile?.content ?? '';
 
-  const activeTabs = files.filter(f => f.id === activeFileId);
+  const getFullHtml = useCallback(() => {
+    const htmlFile = files.find(f => f.name === 'index.html');
+    if (!htmlFile) return '<h1>index.html not found</h1>';
+
+    let htmlContent = htmlFile.content || '';
+
+    const cssFile = files.find(f => f.name === 'style.css');
+    if (cssFile && cssFile.content) {
+      htmlContent = htmlContent.replace('</head>', `<style>${cssFile.content}</style></head>`);
+    }
+
+    const jsFile = files.find(f => f.name === 'script.js');
+    if (jsFile && jsFile.content) {
+      htmlContent = htmlContent.replace('</body>', `<script>${jsFile.content}</script></body>`);
+    }
+
+    return htmlContent;
+  }, [files]);
+
 
   useEffect(() => {
-    if (activeFile?.language && languages.find(l => l.value === activeFile.language)?.isWeb) {
-      setOutput(code);
+    if (selectedLanguage.isWeb) {
+      const fullHtml = getFullHtml();
+      setOutput(fullHtml);
     }
-  }, [code, activeFile?.language]);
+  }, [files, selectedLanguage.isWeb, getFullHtml]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const originalLog = iframe.contentWindow?.console.log;
+    const originalWarn = iframe.contentWindow?.console.warn;
+    const originalError = iframe.contentWindow?.console.error;
+
+    const newConsole = {
+        log: (...args: any[]) => {
+            if (originalLog) originalLog.apply(console, args);
+            setHistory(h => [...h, { type: 'output', content: args.map(a => String(a)).join(' ') }]);
+        },
+        warn: (...args: any[]) => {
+            if (originalWarn) originalWarn.apply(console, args);
+            setHistory(h => [...h, { type: 'output', content: `[WARN] ${args.map(a => String(a)).join(' ')}` }]);
+        },
+        error: (...args: any[]) => {
+            if (originalError) originalError.apply(console, args);
+            setHistory(h => [...h, { type: 'output', content: `[ERROR] ${args.map(a => String(a)).join(' ')}` }]);
+        }
+    };
+
+    if (iframe.contentWindow) {
+      (iframe.contentWindow as any).console = { ...iframe.contentWindow?.console, ...newConsole };
+    }
+  }, [output]);
 
 
   const scrollToBottom = () => {
@@ -111,13 +167,8 @@ export default function PolyglotStudio() {
       if (!activeFile) return;
 
       if (selectedLanguage.isWeb) {
-        if (selectedLanguage.value === 'javascript') {
-          setOutput(
-            `<html><head><style>body{font-family:sans-serif;color:hsl(var(--foreground));background-color:transparent;}</style></head><body><script>${code}</script></body></html>`
-          );
-        } else {
-          setOutput(code);
-        }
+        setOutput(getFullHtml());
+        setHistory([]);
         return;
       }
 
@@ -125,7 +176,7 @@ export default function PolyglotStudio() {
       if (stdin) {
         setHistory((prev) => [...prev, { type: 'input', content: stdin }]);
       } else {
-        setHistory([]); // Start new session
+        setHistory([]);
       }
 
       try {
@@ -154,7 +205,6 @@ export default function PolyglotStudio() {
           title: 'Execution Error',
           description: 'Failed to execute the code.',
         });
-        setOutput('Error executing code.');
         setHistory((prev) => [
           ...prev,
           { type: 'output', content: 'Error executing code.' },
@@ -164,7 +214,7 @@ export default function PolyglotStudio() {
         setTimeout(scrollToBottom, 100);
       }
     },
-    [code, selectedLanguage, toast, history, activeFile]
+    [code, selectedLanguage, toast, history, activeFile, getFullHtml]
   );
 
   const handleRunCode = useCallback(() => {
@@ -183,7 +233,7 @@ export default function PolyglotStudio() {
 
   const handleDownload = useCallback(() => {
     if (!activeFile) return;
-    const blob = new Blob([activeFile.content], { type: 'text/plain' });
+    const blob = new Blob([activeFile.content!], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -197,63 +247,149 @@ export default function PolyglotStudio() {
       description: `Your ${activeFile.name} file is downloading.`,
     });
   }, [activeFile, toast]);
+  
+  const getFileLanguage = (fileName: string): LanguageValue => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    return languages.find(l => l.extension === extension)?.value || 'plaintext' as any;
+  }
 
-  const handleFileCreate = () => {
-    const newFileName = prompt('Enter new file name:', 'new-file.js');
-    if (newFileName) {
-      const newFile: FileNode = {
-        id: `file:${Date.now()}`,
-        name: newFileName,
-        content: `// New file: ${newFileName}`,
-        language: 'javascript',
-      };
-      setFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFile.id);
-    }
+  const handleFileCreate = (name: string, parentId: string | null) => {
+    const newFile: FileNode = {
+      id: `file:${Date.now()}`,
+      name,
+      content: ``,
+      language: getFileLanguage(name),
+      parentId,
+      type: 'file',
+    };
+    setFiles((prev) => [...prev, newFile]);
+    handleFileSelect(newFile.id);
   };
+
+  const handleFolderCreate = (name: string, parentId: string | null) => {
+      const newFolder: FileNode = {
+          id: `folder:${Date.now()}`,
+          name,
+          type: 'folder',
+          parentId,
+          children: []
+      };
+      setFiles(prev => [...prev, newFolder]);
+  }
+  
+  const deleteRecursively = (id: string, allFiles: FileNode[]): FileNode[] => {
+      const fileToDelete = allFiles.find(f => f.id === id);
+      if (!fileToDelete) return allFiles;
+
+      let childrenIds: string[] = [];
+      if (fileToDelete.type === 'folder') {
+          childrenIds = allFiles.filter(f => f.parentId === id).map(f => f.id);
+      }
+      
+      let remainingFiles = allFiles.filter(f => f.id !== id);
+      childrenIds.forEach(childId => {
+          remainingFiles = deleteRecursively(childId, remainingFiles);
+      });
+      
+      return remainingFiles;
+  }
 
   const handleFileDelete = (fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    
+    // Close the tab if it's open
+    setOpenFileIds(ids => ids.filter(id => id !== fileId));
+
     if (activeFileId === fileId) {
-      const remainingFiles = files.filter(f => f.id !== fileId);
-      setActiveFileId(remainingFiles.length > 0 ? remainingFiles[0].id : null);
+        const remainingOpen = openFileIds.filter(id => id !== fileId);
+        setActiveFileId(remainingOpen.length > 0 ? remainingOpen[0] : null);
     }
   };
 
+  const handleFolderDelete = (folderId: string) => {
+      setFiles(prev => {
+          const filesToDelete = new Set<string>([folderId]);
+          const findChildren = (parentId: string) => {
+              prev.forEach(file => {
+                  if (file.parentId === parentId) {
+                      filesToDelete.add(file.id);
+                      if (file.type === 'folder') {
+                          findChildren(file.id);
+                      }
+                  }
+              });
+          };
+          findChildren(folderId);
+          
+          const openTabsInDeletedFolder = openFileIds.filter(id => filesToDelete.has(files.find(f => f.id === id)?.parentId || ''));
+          setOpenFileIds(ids => ids.filter(id => !filesToDelete.has(id) && !openTabsInDeletedFolder.includes(id)));
+
+          if (activeFileId && filesToDelete.has(activeFileId)) {
+            const remainingOpen = openFileIds.filter(id => !filesToDelete.has(id));
+            setActiveFileId(remainingOpen.length > 0 ? remainingOpen[0] : null);
+          }
+          
+          return prev.filter(f => !filesToDelete.has(f.id));
+      });
+  }
+
+  const handleRename = (id: string, newName: string) => {
+      setFiles(prev => prev.map(f => f.id === id ? {...f, name: newName, language: f.type === 'file' ? getFileLanguage(newName) : f.language} : f));
+  }
+
   const handleFileSelect = (fileId: string) => {
+    const file = files.find(f => f.id === fileId);
+    if (!file || file.type === 'folder') return;
+    
+    if (!openFileIds.includes(fileId)) {
+        setOpenFileIds(prev => [...prev, fileId]);
+    }
     setActiveFileId(fileId);
-    const file = files.find((f) => f.id === fileId);
-    if (file) {
-      const lang = languages.find((l) => l.value === file.language);
-      if (lang?.isWeb) {
-        setOutput(file.content);
-      } else {
-        setOutput('');
-        setHistory([]);
-      }
+
+    const lang = languages.find((l) => l.value === file.language);
+    if (!lang?.isWeb) {
+      setOutput('');
+      setHistory([]);
     }
   };
   
-  const handleCloseTab = (fileId: string) => {
-    if (activeFileId === fileId) {
-      const currentIndex = files.findIndex(f => f.id === fileId);
-      let nextActiveId = null;
-      if (files.length > 1) {
-        nextActiveId = files[currentIndex - 1]?.id || files[currentIndex + 1]?.id || null;
+  const handleCloseTab = (fileIdToClose: string) => {
+    const newOpenFileIds = openFileIds.filter(id => id !== fileIdToClose);
+    setOpenFileIds(newOpenFileIds);
+
+    if (activeFileId === fileIdToClose) {
+      if (newOpenFileIds.length > 0) {
+        // Find index of closed tab to determine next active tab
+        const closedTabIndex = openFileIds.findIndex(id => id === fileIdToClose);
+        // Activate the previous tab, or the first one if the closed one was the first
+        const newActiveIndex = Math.max(0, closedTabIndex - 1);
+        setActiveFileId(newOpenFileIds[newActiveIndex]);
+      } else {
+        setActiveFileId(null);
       }
-      setActiveFileId(nextActiveId);
     }
   };
+
+  const togglePanel = (panel: Panel) => {
+    if (activePanel === panel) {
+        setIsExplorerOpen(!isExplorerOpen);
+    } else {
+        setActivePanel(panel);
+        setIsExplorerOpen(true);
+    }
+  }
+  
+  const SideBarButton = ({Icon, panel}: {Icon: LucideIcon, panel: Panel}) => (
+     <Button variant={isExplorerOpen && activePanel === panel ? "secondary" : "ghost"} size="icon" onClick={() => togglePanel(panel)}>
+        <Icon className="w-6 h-6" />
+      </Button>
+  )
 
   return (
     <div className="flex h-screen bg-background text-foreground">
       <div className="flex flex-col w-12 bg-card border-r items-center py-2 shrink-0">
-        <Button variant={isExplorerOpen ? "secondary" : "ghost"} size="icon" onClick={() => setIsExplorerOpen(!isExplorerOpen)}>
-          <Files className="w-6 h-6" />
-        </Button>
-        <Button variant="ghost" size="icon">
-          <Search className="w-6 h-6" />
-        </Button>
+        <SideBarButton Icon={Files} panel="explorer" />
+        <SideBarButton Icon={Search} panel="search" />
         <Button variant="ghost" size="icon">
           <Code className="w-6 h-6" />
         </Button>
@@ -272,18 +408,30 @@ export default function PolyglotStudio() {
       
       {isExplorerOpen && (
         <div className="w-64 bg-card border-r flex flex-col shrink-0">
-           <div className="p-2 border-b">
-                <h2 className="text-sm font-semibold tracking-widest uppercase">Explorer</h2>
-            </div>
-            <ScrollArea className="flex-1">
-              <FileExplorer
-                files={files}
-                activeFileId={activeFileId}
-                onFileSelect={handleFileSelect}
-                onFileCreate={handleFileCreate}
-                onFileDelete={handleFileDelete}
-              />
-            </ScrollArea>
+            {activePanel === 'explorer' && (
+                <>
+                <div className="p-2 border-b">
+                    <h2 className="text-sm font-semibold tracking-widest uppercase">Explorer</h2>
+                </div>
+                <ScrollArea className="flex-1">
+                <FileExplorer
+                    files={files}
+                    onFileSelect={handleFileSelect}
+                    onFileCreate={handleFileCreate}
+                    onFolderCreate={handleFolderCreate}
+                    onFileDelete={handleFileDelete}
+                    onFolderDelete={handleFolderDelete}
+                    onRename={handleRename}
+                />
+                </ScrollArea>
+                </>
+            )}
+             {activePanel === 'search' && (
+                <div className="p-4">
+                    <h2 className="text-lg font-semibold mb-4">Search</h2>
+                    <Input placeholder="Search across all files..."/>
+                </div>
+            )}
         </div>
       )}
 
@@ -303,21 +451,30 @@ export default function PolyglotStudio() {
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
           <div className="flex flex-col h-full">
             <div className="flex items-center border-b border-t">
-              {activeFileId && (
-                <div
-                  className="flex items-center gap-2 px-4 py-2 border-r bg-accent text-accent-foreground"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>{activeFile?.name}</span>
-                  <Button variant="ghost" size="icon" className="w-6 h-6 -mr-2" onClick={() => handleCloseTab(activeFileId)}>
-                    <X className="w-4 h-4"/>
-                  </Button>
-                </div>
-              )}
+              {openFileIds.map(fileId => {
+                  const file = files.find(f => f.id === fileId);
+                  if(!file) return null;
+                  return (
+                    <div
+                        key={fileId}
+                        onClick={() => setActiveFileId(fileId)}
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2 border-r cursor-pointer",
+                            activeFileId === fileId ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+                        )}
+                    >
+                    <FileText className="w-4 h-4" />
+                    <span>{file.name}</span>
+                    <Button variant="ghost" size="icon" className="w-6 h-6 -mr-2" onClick={(e) => { e.stopPropagation(); handleCloseTab(fileId)}}>
+                        <X className="w-4 h-4"/>
+                    </Button>
+                    </div>
+                  )
+              })}
             </div>
             <div className="flex-1 relative">
                  <Textarea
-                    value={code}
+                    value={activeFileId ? code : ''}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="Select a file to start coding, or create a new one."
                     className="absolute inset-0 w-full h-full resize-none font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm"
@@ -327,28 +484,28 @@ export default function PolyglotStudio() {
           </div>
           
           <div className="flex flex-col h-full border-l">
-            <div className="flex items-center border-b p-2">
-                <Tabs defaultValue="preview" className="w-full">
-                    <TabsList>
-                        <TabsTrigger value="preview">Preview</TabsTrigger>
-                        <TabsTrigger value="console">Console</TabsTrigger>
+             <Tabs defaultValue="preview" className="flex flex-col h-full">
+                <div className="flex-shrink-0 border-b">
+                    <TabsList className="bg-transparent rounded-none p-0 m-0">
+                        <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-accent">Preview</TabsTrigger>
+                        <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-accent">Console</TabsTrigger>
                     </TabsList>
-                </Tabs>
-            </div>
-            <div className="flex-1 bg-white">
-                {selectedLanguage.isWeb ? (
+                </div>
+                <TabsContent value="preview" className="flex-1 bg-white">
                      <iframe
+                        ref={iframeRef}
                         srcDoc={output}
                         title="Code Preview"
                         sandbox="allow-scripts allow-modals"
                         className="w-full h-full border-0"
                     />
-                ) : (
-                    <div className="p-4 h-full flex flex-col gap-2 flex-1 bg-card text-card-foreground">
+                </TabsContent>
+                <TabsContent value="console" className="flex-1 bg-card text-card-foreground">
+                    <div className="p-4 h-full flex flex-col gap-2 flex-1">
                         <div className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm overflow-auto">
                             {history.length === 0 && !isExecuting && (
-                            <pre className="whitespace-pre-wrap">
-                                Click 'Run' to see the output.
+                            <pre className="whitespace-pre-wrap text-muted-foreground">
+                                Console output will appear here. Click 'Run' to execute your code.
                             </pre>
                             )}
                             {history.map((item, index) => (
@@ -364,7 +521,7 @@ export default function PolyglotStudio() {
                                 )}
                             </div>
                             ))}
-                            {isExecuting && (
+                            {isExecuting && !selectedLanguage.isWeb && (
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 <LoaderCircle className="w-5 h-5 animate-spin" />
                                 <h3 className="font-semibold">Executing...</h3>
@@ -390,8 +547,8 @@ export default function PolyglotStudio() {
                             </Button>
                         </form>
                     </div>
-                )}
-            </div>
+                </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

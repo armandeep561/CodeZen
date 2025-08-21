@@ -1,5 +1,6 @@
 export const languages = [
-  { value: 'html', label: 'HTML/CSS/JS', isWeb: true, extension: 'html' },
+  { value: 'html', label: 'HTML', isWeb: true, extension: 'html' },
+  { value: 'css', label: 'CSS', isWeb: true, extension: 'css' },
   { value: 'javascript', label: 'JavaScript', isWeb: true, extension: 'js' },
   { value: 'python', label: 'Python', isWeb: false, extension: 'py' },
   { value: 'php', label: 'PHP', isWeb: false, extension: 'php' },
@@ -8,10 +9,10 @@ export const languages = [
   { value: 'java', label: 'Java', isWeb: false, extension: 'java' },
 ] as const;
 
-export type LanguageValue = typeof languages[number]['value'];
-export type Language = typeof languages[number];
+export type LanguageValue = (typeof languages)[number]['value'] | 'plaintext';
+export type Language = (typeof languages)[number];
 
-export const templates: Record<LanguageValue, { label: string; code: string }> = {
+export const templates: Record<Extract<LanguageValue, 'html' | 'javascript' | 'python' | 'php' | 'c' | 'cpp' | 'java'>, { label: string; code: string }> = {
   html: {
     label: 'Basic HTML Page',
     code: `<!DOCTYPE html>
@@ -20,41 +21,23 @@ export const templates: Record<LanguageValue, { label: string; code: string }> =
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Page</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f0f4f7;
-      color: #333;
-      padding: 2rem;
-    }
-    h1 {
-      color: #4A6572;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <h1>Hello, World!</h1>
   <p>This is a basic HTML page.</p>
-  <script>
-    console.log('Hello from JavaScript!');
-    document.body.insertAdjacentHTML('beforeend', '<p><em>Content added via JavaScript.</em></p>');
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>`
   },
   javascript: {
     label: 'DOM Manipulation',
-    code: `// Create a new element
-const newElement = document.createElement('div');
-newElement.textContent = 'Hello from dynamically added JavaScript!';
-newElement.style.color = '#69A297';
-newElement.style.marginTop = '10px';
-newElement.style.border = '1px solid #ccc';
-newElement.style.padding = '10px';
-newElement.style.borderRadius = '5px';
+    code: `console.log("Hello from script.js!");
 
-// Add it to the body
-document.body.appendChild(newElement);`
+const newElement = document.createElement('div');
+newElement.textContent = 'I was added by script.js!';
+document.body.appendChild(newElement);
+`
   },
   python: {
     label: 'Hello World Function',
