@@ -36,6 +36,8 @@ import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { LanguageIcon } from './language-icon';
+import { Highlight } from './highlight';
+
 
 interface HistoryItem {
   type: 'output' | 'input';
@@ -289,8 +291,7 @@ export default function PolyglotStudio() {
           originalWarn.apply(console, args);
         };
         console.error = (...args) => {
-          window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
-          originalError.apply(console, args);
+           window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
         };
         window.addEventListener('error', (e) => {
            window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
@@ -728,7 +729,9 @@ export default function PolyglotStudio() {
                             >
                                 <div className="font-semibold text-primary">{result.fileName}</div>
                                 <div className="text-muted-foreground text-xs">Line {result.lineNumber}</div>
-                                <div className="font-code text-accent-foreground truncate">{result.line}</div>
+                                <div className="font-code text-accent-foreground truncate">
+                                  <Highlight text={result.line} query={searchQuery} />
+                                </div>
                             </button>
                           ))
                         ) : (
