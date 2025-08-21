@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useRef, FormEvent, useEffect } from 'react';
@@ -86,7 +87,6 @@ export default function PolyglotStudio() {
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const { toast } = useToast();
   const outputEndRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const selectedLanguage =
@@ -113,6 +113,28 @@ export default function PolyglotStudio() {
       htmlContent = htmlContent.replace('</head>', `<style>${cssFile.content}</style></head>`);
     }
 
+    const consoleInterceptor = `
+      <script>
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        console.log = (...args) => {
+          window.parent.postMessage({ type: 'console', level: 'log', args: args.map(a => String(a)) }, '*');
+          originalLog.apply(console, args);
+        };
+        console.warn = (...args) => {
+          window.parent.postMessage({ type: 'console', level: 'warn', args: args.map(a => String(a)) }, '*');
+          originalWarn.apply(console, args);
+        };
+        console.error = (...args) => {
+          window.parent.postMessage({ type: 'console', level: 'error', args: args.map(a => String(a)) }, '*');
+          originalError.apply(console, args);
+        };
+      </script>
+    `;
+    htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}`);
+
     const jsFile = files.find(f => f.name === 'script.js');
     if (jsFile && jsFile.content) {
       htmlContent = htmlContent.replace('</body>', `<script>${jsFile.content}</script></body>`);
@@ -130,32 +152,25 @@ export default function PolyglotStudio() {
   }, [files, selectedLanguage.isWeb, getFullHtml]);
 
   useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const originalLog = iframe.contentWindow?.console.log;
-    const originalWarn = iframe.contentWindow?.console.warn;
-    const originalError = iframe.contentWindow?.console.error;
-
-    const newConsole = {
-        log: (...args: any[]) => {
-            if (originalLog) originalLog.apply(console, args);
-            setHistory(h => [...h, { type: 'output', content: args.map(a => String(a)).join(' ') }]);
-        },
-        warn: (...args: any[]) => {
-            if (originalWarn) originalWarn.apply(console, args);
-            setHistory(h => [...h, { type: 'output', content: `[WARN] ${args.map(a => String(a)).join(' ')}` }]);
-        },
-        error: (...args: any[]) => {
-            if (originalError) originalError.apply(console, args);
-            setHistory(h => [...h, { type: 'output', content: `[ERROR] ${args.map(a => String(a)).join(' ')}` }]);
+    const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === 'console') {
+            const { level, args } = event.data;
+            let content = args.join(' ');
+            if (level === 'warn') {
+                content = `[WARN] ${content}`;
+            } else if (level === 'error') {
+                content = `[ERROR] ${content}`;
+            }
+            setHistory(h => [...h, { type: 'output', content }]);
         }
     };
 
-    if (iframe.contentWindow) {
-      (iframe.contentWindow as any).console = { ...iframe.contentWindow?.console, ...newConsole };
-    }
-  }, [output]);
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+        window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
 
   const scrollToBottom = () => {
@@ -167,8 +182,8 @@ export default function PolyglotStudio() {
       if (!activeFile) return;
 
       if (selectedLanguage.isWeb) {
-        setOutput(getFullHtml());
         setHistory([]);
+        setOutput(getFullHtml());
         return;
       }
 
@@ -493,7 +508,6 @@ export default function PolyglotStudio() {
                 </div>
                 <TabsContent value="preview" className="flex-1 bg-white">
                      <iframe
-                        ref={iframeRef}
                         srcDoc={output}
                         title="Code Preview"
                         sandbox="allow-scripts allow-modals"
