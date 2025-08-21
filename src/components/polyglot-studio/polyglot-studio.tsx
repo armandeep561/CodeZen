@@ -105,6 +105,8 @@ export default function PolyglotStudio() {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [selection, setSelection] = useState<{ start: number, end: number } | null>(null);
 
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+
   const activeFile = files.find((f) => f.id === activeFileId);
   const selectedLanguage =
     languages.find((l) => l.value === activeFile?.language) || languages[0];
@@ -446,6 +448,13 @@ export default function PolyglotStudio() {
       </Button>
   )
 
+  const handleWheelScroll = (event: React.WheelEvent<HTMLDivElement>) => {
+    const container = tabsContainerRef.current;
+    if (container) {
+      container.scrollLeft += event.deltaY;
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground font-body">
       <div className="flex flex-col w-12 bg-card border-r items-center py-2 shrink-0">
@@ -526,30 +535,42 @@ export default function PolyglotStudio() {
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
           {/* Editor Panel */}
           <div className="flex flex-col h-full">
-             <div className="flex items-center border-b border-t h-12">
-                <div className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar">
-                   <div className="flex">
-                    {openFileIds.map(fileId => {
-                        const file = files.find(f => f.id === fileId);
-                        if(!file) return null;
-                        return (
-                          <div
-                              key={fileId}
-                              onClick={() => handleFileSelect(fileId)}
-                              className={cn(
-                                  "flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12 flex-shrink-0",
-                                  activeFileId === fileId && activeView === 'editor' ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
-                              )}
-                          >
-                          <FileText className="w-4 h-4" />
-                          <span className="truncate">{file.name}</span>
-                          <Button variant="ghost" size="icon" className="w-6 h-6 -mr-2" onClick={(e) => { e.stopPropagation(); handleCloseTab(fileId)}}>
-                              <X className="w-4 h-4"/>
-                          </Button>
-                          </div>
-                        )
-                    })}
-                   </div>
+            <div className="flex items-center border-b border-t h-12">
+                <div
+                  ref={tabsContainerRef}
+                  className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
+                  onWheel={handleWheelScroll}
+                >
+                  {openFileIds.map(fileId => {
+                    const file = files.find(f => f.id === fileId);
+                    if (!file) return null;
+                    return (
+                      <div
+                        key={fileId}
+                        onClick={() => handleFileSelect(fileId)}
+                        className={cn(
+                          'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12',
+                          activeFileId === fileId && activeView === 'editor'
+                            ? 'bg-accent text-accent-foreground'
+                            : 'hover:bg-accent/50'
+                        )}
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span className="truncate">{file.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-6 h-6 -mr-2"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleCloseTab(fileId);
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
             </div>
             <div className="flex-1 relative">
