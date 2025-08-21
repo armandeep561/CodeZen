@@ -225,31 +225,14 @@ export default function PolyglotStudio() {
 
   const getFullHtml = useCallback(() => {
     const htmlFile = files.find(f => f.language === 'html');
-    if (!htmlFile) return '<h1>No HTML file found to display.</h1><p>Please create an HTML file (e.g., index.html) to see a preview.</p>';
+    if (!htmlFile) {
+        return '<h1>No HTML file found to display.</h1><p>Please create an HTML file (e.g., index.html) to see a preview.</p>';
+    }
 
     let htmlContent = htmlFile.content || '';
-
     const fileContentMap = new Map(files.map(f => [f.name, f.content || '']));
 
-    // Inject CSS
-    const cssLinkRegex = /<link\s+[^>]*?href="([^"]+)"[^>]*?rel="stylesheet"[^>]*?>/g;
-    htmlContent = htmlContent.replace(cssLinkRegex, (match, href) => {
-        if (fileContentMap.has(href)) {
-            return `<style>${fileContentMap.get(href)}</style>`;
-        }
-        return match;
-    });
-
-    // Inject JS
-    const scriptTagRegex = /<script\s+[^>]*?src="([^"]+)"[^>]*?>\s*<\/script>/g;
-    htmlContent = htmlContent.replace(scriptTagRegex, (match, src) => {
-        if (fileContentMap.has(src)) {
-            return `<script>${fileContentMap.get(src)}</script>`;
-        }
-        return match;
-    });
-
-    // Inject console interceptor
+    // 1. Inject console interceptor FIRST
     const consoleInterceptor = `
       <script>
         const originalLog = console.log;
@@ -270,14 +253,33 @@ export default function PolyglotStudio() {
         };
       </script>
     `;
+    
     if (htmlContent.includes('<head>')) {
       htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}`);
     } else {
       htmlContent = consoleInterceptor + htmlContent;
     }
-    
+
+    // 2. Inject CSS
+    const cssLinkRegex = /<link\s+[^>]*?href="([^"]+)"[^>]*?rel="stylesheet"[^>]*?>/g;
+    htmlContent = htmlContent.replace(cssLinkRegex, (match, href) => {
+        if (fileContentMap.has(href)) {
+            return `<style>${fileContentMap.get(href)}</style>`;
+        }
+        return match; // Keep the original link tag if file not found
+    });
+
+    // 3. Inject JS
+    const scriptTagRegex = /<script\s+[^>]*?src="([^"]+)"[^>]*?>\s*<\/script>/g;
+    htmlContent = htmlContent.replace(scriptTagRegex, (match, src) => {
+        if (fileContentMap.has(src)) {
+            return `<script>${fileContentMap.get(src)}</script>`;
+        }
+        return match; // Keep the original script tag if file not found
+    });
+
     return htmlContent;
-  }, [files]);
+}, [files]);
 
 
   useEffect(() => {
@@ -534,7 +536,9 @@ export default function PolyglotStudio() {
     setSelection(null); 
 
     const lang = languages.find((l) => l.value === file.language);
-    if (!lang?.isWeb) {
+    if (lang?.isWeb) {
+      setHistory([]);
+    } else {
       setOutput('');
       setHistory([]);
     }
@@ -679,61 +683,61 @@ export default function PolyglotStudio() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-         <div className="flex items-center border-b h-12 pr-4 bg-card">
-              <div
-                ref={tabsContainerRef}
-                className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
-                onWheel={handleWheelScroll}
-              >
-                 {openFileIds.map(fileId => {
-                  const file = files.find(f => f.id === fileId);
-                  if (!file) return null;
-                  return (
-                    <div
-                      key={fileId}
-                      onClick={() => {
-                        handleFileSelect(fileId);
-                        setActiveView('editor');
-                      }}
-                      className={cn(
-                        'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12',
-                        activeFileId === fileId && activeView === 'editor'
-                          ? 'bg-background'
-                          : 'hover:bg-accent/50'
-                      )}
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span className="truncate">{file.name}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-6 h-6 -mr-2 rounded-full"
-                        onClick={e => {
-                          e.stopPropagation();
-                          handleCloseTab(fileId);
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-2 ml-auto pl-4">
-                  <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!activeFile}>
-                    <Download className="w-4 h-4" />
-                    Download
+        <div className="flex items-center border-b h-12 pr-4 bg-card">
+          <div
+            ref={tabsContainerRef}
+            className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
+            onWheel={handleWheelScroll}
+          >
+            {openFileIds.map(fileId => {
+              const file = files.find(f => f.id === fileId);
+              if (!file) return null;
+              return (
+                <div
+                  key={fileId}
+                  onClick={() => {
+                    handleFileSelect(fileId);
+                    setActiveView('editor');
+                  }}
+                  className={cn(
+                    'inline-flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12',
+                    activeFileId === fileId && activeView === 'editor'
+                      ? 'bg-background'
+                      : 'hover:bg-accent/50'
+                  )}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="truncate">{file.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 -mr-2 rounded-full"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleCloseTab(fileId);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
                   </Button>
-                  <Button size="sm" onClick={() => execute()} disabled={isExecuting}>
-                    <Play className="w-4 h-4" />
-                    Run
-                  </Button>
-              </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 ml-auto pl-4">
+              <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!activeFile}>
+                <Download className="w-4 h-4" />
+                Download
+              </Button>
+              <Button size="sm" onClick={() => execute()} disabled={isExecuting}>
+                <Play className="w-4 h-4" />
+                Run
+              </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
-            <div className="flex flex-col h-full bg-background relative">
-               <MainContent
+          <div className="flex flex-col h-full bg-background relative">
+              <MainContent
                   activeView={activeView}
                   activeOutputTab={activeOutputTab}
                   setActiveOutputTab={setActiveOutputTab}
@@ -750,75 +754,75 @@ export default function PolyglotStudio() {
                   code={code}
                   setCode={setCode}
                   activeFile={activeFile}
-               />
-            </div>
-            
-            <div className="flex flex-col h-full border-l bg-card">
-              <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
-                  <div className="flex-shrink-0 border-b h-12">
-                      <TabsList className="bg-transparent rounded-none p-0 m-0 h-full">
-                          <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:bg-background data-[state=active]:border-b-2 border-primary">Preview</TabsTrigger>
-                          <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:bg-background data-[state=active]:border-b-2 border-primary">Console</TabsTrigger>
-                      </TabsList>
-                  </div>
-                  <TabsContent value="preview" className="flex-1 bg-white m-0">
-                      <iframe
-                          srcDoc={output}
-                          title="Code Preview"
-                          sandbox="allow-scripts allow-modals"
-                          className="w-full h-full border-0"
-                      />
-                  </TabsContent>
-                  <TabsContent value="console" className="flex-1 bg-card text-card-foreground m-0">
-                      <div className="p-4 h-full flex flex-col gap-2">
-                          <ScrollArea className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm">
-                              {history.length === 0 && !isExecuting && (
-                              <pre className="whitespace-pre-wrap text-muted-foreground">
-                                  Console output will appear here. Click 'Run' to execute your code.
-                              </pre>
-                              )}
-                              {history.map((item, index) => (
-                              <div key={index}>
-                                  {item.type === 'output' ? (
-                                  <pre className="whitespace-pre-wrap">
-                                      {item.content}
-                                  </pre>
-                                  ) : (
-                                  <pre className="whitespace-pre-wrap text-muted-foreground">
-                                      &gt; {item.content}
-                                  </pre>
-                                  )}
-                              </div>
-                              ))}
-                              {isExecuting && !selectedLanguage.isWeb && (
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                  <LoaderCircle className="w-5 h-5 animate-spin" />
-                                  <h3 className="font-semibold">Executing...</h3>
-                              </div>
-                              )}
-                              <div ref={outputEndRef} />
-                          </ScrollArea>
-                          <form onSubmit={handleUserInputSubmit} className="flex gap-2">
-                              <Input
-                              type="text"
-                              value={userInput}
-                              onChange={(e) => setUserInput(e.target.value)}
-                              placeholder="Type your input here..."
-                              className="flex-1 font-code bg-muted/50"
-                              disabled={isExecuting || selectedLanguage.isWeb}
-                              />
-                              <Button
-                              type="submit"
-                              variant="secondary"
-                              disabled={isExecuting || selectedLanguage.isWeb}
-                              >
-                              <Send className="w-4 h-4" />
-                              </Button>
-                          </form>
-                      </div>
-                  </TabsContent>
-              </Tabs>
-            </div>
+              />
+          </div>
+          
+          <div className="flex flex-col h-full border-l bg-card">
+            <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
+                <div className="flex-shrink-0 border-b h-12">
+                    <TabsList className="bg-transparent rounded-none p-0 m-0 h-full">
+                        <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:bg-background data-[state=active]:border-b-2 border-primary">Preview</TabsTrigger>
+                        <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:bg-background data-[state=active]:border-b-2 border-primary">Console</TabsTrigger>
+                    </TabsList>
+                </div>
+                <TabsContent value="preview" className="flex-1 bg-white m-0">
+                    <iframe
+                        srcDoc={output}
+                        title="Code Preview"
+                        sandbox="allow-scripts allow-modals"
+                        className="w-full h-full border-0"
+                    />
+                </TabsContent>
+                <TabsContent value="console" className="flex-1 bg-card text-card-foreground m-0">
+                    <div className="p-4 h-full flex flex-col gap-2">
+                        <ScrollArea className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm">
+                            {history.length === 0 && !isExecuting && (
+                            <pre className="whitespace-pre-wrap text-muted-foreground">
+                                Console output will appear here. Click 'Run' to execute your code.
+                            </pre>
+                            )}
+                            {history.map((item, index) => (
+                            <div key={index}>
+                                {item.type === 'output' ? (
+                                <pre className="whitespace-pre-wrap">
+                                    {item.content}
+                                </pre>
+                                ) : (
+                                <pre className="whitespace-pre-wrap text-muted-foreground">
+                                    &gt; {item.content}
+                                </pre>
+                                )}
+                            </div>
+                            ))}
+                            {isExecuting && !selectedLanguage.isWeb && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                                <LoaderCircle className="w-5 h-5 animate-spin" />
+                                <h3 className="font-semibold">Executing...</h3>
+                            </div>
+                            )}
+                            <div ref={outputEndRef} />
+                        </ScrollArea>
+                        <form onSubmit={handleUserInputSubmit} className="flex gap-2">
+                            <Input
+                            type="text"
+                            value={userInput}
+                            onChange={(e) => setUserInput(e.target.value)}
+                            placeholder="Type your input here..."
+                            className="flex-1 font-code bg-muted/50"
+                            disabled={isExecuting || selectedLanguage.isWeb}
+                            />
+                            <Button
+                            type="submit"
+                            variant="secondary"
+                            disabled={isExecuting || selectedLanguage.isWeb}
+                            >
+                            <Send className="w-4 h-4" />
+                            </Button>
+                        </form>
+                    </div>
+                </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
     </div>
