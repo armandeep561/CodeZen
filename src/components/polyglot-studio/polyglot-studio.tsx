@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { Bot, Download, Languages, LoaderCircle, Play, FileText, FileCode2 } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { Bot, Download, Languages, Play, FileText, FileCode2, LoaderCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,24 +10,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { languages, templates, type Language, type LanguageValue } from '@/lib/templates';
-import { getAiHint } from '@/app/actions';
+import { runCode } from '@/app/actions';
 
 export default function PolyglotStudio() {
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0]);
   const [code, setCode] = useState<string>(templates.html.code);
   const [output, setOutput] = useState<string>(templates.html.code);
-  const [aiHint, setAiHint] = useState<string | null>(null);
-  const [isHintLoading, setIsHintLoading] = useState<boolean>(false);
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const { toast } = useToast();
 
   const handleLanguageChange = useCallback((langValue: LanguageValue) => {
     const newLang = languages.find(l => l.value === langValue) || languages[0];
     setSelectedLanguage(newLang);
-    setCode(templates[newLang.value].code);
-    setAiHint(null);
+    const newCode = templates[newLang.value].code;
+    setCode(newCode);
     if (newLang.isWeb) {
-      setOutput(templates[newLang.value].code);
+      setOutput(newCode);
     } else {
       setOutput('');
     }
@@ -40,7 +38,6 @@ export default function PolyglotStudio() {
 
     setSelectedLanguage(newLang);
     setCode(newCode);
-    setAiHint(null);
     if (newLang.isWeb) {
       setOutput(newCode);
     } else {
@@ -48,7 +45,11 @@ export default function PolyglotStudio() {
     }
   }, []);
 
-  const handleRunCode = useCallback(() => {
+  const handleRunCode = useCallback(async () => {
+    toast({
+      title: "Running Code...",
+      description: `Executing your ${selectedLanguage.label} code.`,
+    })
     if (selectedLanguage.isWeb) {
       if (selectedLanguage.value === 'javascript') {
         setOutput(`<html><head><style>body{font-family:sans-serif;color:hsl(var(--foreground));background-color:transparent;}</style></head><body><script>${code}</script></body></html>`);
@@ -56,14 +57,22 @@ export default function PolyglotStudio() {
         setOutput(code);
       }
     } else {
-      // For non-web languages, use "Run" to trigger an AI hint
-      fetchAiHint(true);
+      setIsExecuting(true);
+      try {
+        const result = await runCode({ language: selectedLanguage.label, code });
+        setOutput(result);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Execution Error",
+          description: "Failed to execute the code.",
+        })
+        setOutput("Error executing code.");
+      } finally {
+        setIsExecuting(false);
+      }
     }
-    toast({
-      title: "Code Executed",
-      description: `Running ${selectedLanguage.label} code. Preview updated.`,
-    })
-  }, [code, selectedLanguage]);
+  }, [code, selectedLanguage, toast]);
 
   const handleDownload = useCallback(() => {
     const blob = new Blob([code], { type: 'text/plain' });
@@ -79,36 +88,7 @@ export default function PolyglotStudio() {
       title: "Download Started",
       description: `Your ${selectedLanguage.label} file is downloading.`,
     })
-  }, [code, selectedLanguage]);
-
-  const fetchAiHint = async (force = false) => {
-    if (code.trim().length < 20 && !force) return;
-    setIsHintLoading(true);
-    try {
-      const hint = await getAiHint({ language: selectedLanguage.label, codeContext: code });
-      setAiHint(hint);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "AI Error",
-        description: "Failed to get AI-powered hint.",
-      })
-      setAiHint("Error fetching hint.");
-    } finally {
-      setIsHintLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
-    debounceTimeout.current = setTimeout(() => {
-      fetchAiHint();
-    }, 1500);
-
-    return () => {
-      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
-    };
-  }, [code, selectedLanguage]);
+  }, [code, selectedLanguage.label, selectedLanguage.extension, toast]);
 
   return (
     <div className="flex flex-col h-screen p-4 gap-4 bg-background">
@@ -148,8 +128,8 @@ export default function PolyglotStudio() {
             </SelectContent>
           </Select>
 
-          <Button onClick={handleRunCode} variant="secondary" className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Play className="mr-2 h-4 w-4" />
+          <Button onClick={handleRunCode} variant="secondary" className="bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isExecuting}>
+            {isExecuting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
             Run Code
           </Button>
           <Button onClick={handleDownload} variant="secondary">
@@ -177,7 +157,7 @@ export default function PolyglotStudio() {
         <Card className="flex flex-col h-full">
           <CardHeader>
             <CardTitle className="font-headline text-lg">
-              {selectedLanguage.isWeb ? 'Browser Preview' : 'AI Assistant'}
+              {selectedLanguage.isWeb ? 'Browser Preview' : 'Output'}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 bg-card rounded-b-lg">
@@ -190,18 +170,14 @@ export default function PolyglotStudio() {
               />
             ) : (
               <div className="p-4 h-full flex flex-col">
-                <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                  <Bot className="w-5 h-5"/>
-                  <h3 className="font-semibold">AI Code Hints</h3>
-                </div>
                 <div className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm overflow-auto">
-                  {isHintLoading ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
+                  {isExecuting ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <LoaderCircle className="w-5 h-5 animate-spin"/>
+                      <h3 className="font-semibold">Executing...</h3>
                     </div>
                   ) : (
-                    <pre className="whitespace-pre-wrap">{aiHint || "Type some code or click 'Run Code' to get an AI hint."}</pre>
+                    <pre className="whitespace-pre-wrap">{output || "Click 'Run Code' to see the output."}</pre>
                   )}
                 </div>
               </div>

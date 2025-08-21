@@ -1,15 +1,14 @@
 'use server';
 
-import { aiCodeHints } from '@/ai/flows/ai-code-hints';
-import type { AiCodeHintsInput } from '@/ai/flows/ai-code-hints';
+import { executeCode } from '@/ai/flows/execute-code-flow';
+import type { ExecuteCodeInput } from '@/ai/flows/execute-code-flow';
 
-export async function getAiHint(input: AiCodeHintsInput): Promise<string> {
+export async function runCode(input: ExecuteCodeInput): Promise<string> {
   try {
-    const result = await aiCodeHints(input);
-    return result.hint;
+    const result = await executeCode(input);
+    return result.output;
   } catch (error) {
-    console.error('Error getting AI hint:', error);
-    // Return a user-friendly error message
-    return 'Could not retrieve AI hint at this time. Please try again later.';
+    console.error('Error executing code:', error);
+    return 'Could not execute code at this time. Please try again later.';
   }
 }
