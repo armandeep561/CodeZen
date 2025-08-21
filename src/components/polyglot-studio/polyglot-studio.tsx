@@ -35,6 +35,7 @@ import { FileExplorer, type FileNode } from './file-explorer';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { LanguageIcon } from './language-icon';
 
 interface HistoryItem {
   type: 'output' | 'input';
@@ -216,30 +217,36 @@ export default function PolyglotStudio() {
     { id: 'js:1', name: 'script.js', content: 'console.log("Hello from script.js!");', language: 'javascript', parentId: null, type: 'file' },
   ];
 
-  const presetTemplates: Record<string, {name: string, files: FileNode[]}> = {
+  const presetTemplates: Record<string, {name: string, files: FileNode[], iconLanguage: LanguageValue}> = {
     'web': {
       name: 'Web App (HTML, CSS, JS)',
-      files: webTemplate
+      files: webTemplate,
+      iconLanguage: 'html'
     },
     'python': {
       name: 'Python',
-      files: [{ id: 'python:1', name: 'main.py', content: templates.python.code, language: 'python', parentId: null, type: 'file' }]
+      files: [{ id: 'python:1', name: 'main.py', content: templates.python.code, language: 'python', parentId: null, type: 'file' }],
+      iconLanguage: 'python'
     },
     'php': {
       name: 'PHP',
-      files: [{ id: 'php:1', name: 'index.php', content: templates.php.code, language: 'php', parentId: null, type: 'file' }]
+      files: [{ id: 'php:1', name: 'index.php', content: templates.php.code, language: 'php', parentId: null, type: 'file' }],
+      iconLanguage: 'php'
     },
     'c': {
       name: 'C',
-      files: [{ id: 'c:1', name: 'main.c', content: templates.c.code, language: 'c', parentId: null, type: 'file' }]
+      files: [{ id: 'c:1', name: 'main.c', content: templates.c.code, language: 'c', parentId: null, type: 'file' }],
+      iconLanguage: 'c'
     },
     'cpp': {
       name: 'C++',
-      files: [{ id: 'cpp:1', name: 'main.cpp', content: templates.cpp.code, language: 'cpp', parentId: null, type: 'file' }]
+      files: [{ id: 'cpp:1', name: 'main.cpp', content: templates.cpp.code, language: 'cpp', parentId: null, type: 'file' }],
+      iconLanguage: 'cpp'
     },
     'java': {
         name: 'Java',
-        files: [{ id: 'java:1', name: 'HelloWorld.java', content: templates.java.code, language: 'java', parentId: null, type: 'file' }]
+        files: [{ id: 'java:1', name: 'HelloWorld.java', content: templates.java.code, language: 'java', parentId: null, type: 'file' }],
+        iconLanguage: 'java'
     }
   }
 
@@ -300,10 +307,14 @@ export default function PolyglotStudio() {
     fileContentMap.forEach((content, name) => {
         if (name.endsWith('.css')) {
             const regex = new RegExp(`<link[^>]*href=(['"])${name}\\1[^>]*>`, 'g');
-            htmlContent = htmlContent.replace(regex, `<style>${content}</style>`);
+            if (regex.test(htmlContent)) {
+               htmlContent = htmlContent.replace(regex, `<style>${content}</style>`);
+            }
         } else if (name.endsWith('.js')) {
             const regex = new RegExp(`<script[^>]*src=(['"])${name}\\1[^>]*><\\/script>`, 'g');
-            htmlContent = htmlContent.replace(regex, `<script>${content}</script>`);
+             if (regex.test(htmlContent)) {
+                htmlContent = htmlContent.replace(regex, `<script>${content}</script>`);
+            }
         }
     });
 
@@ -730,8 +741,9 @@ export default function PolyglotStudio() {
             {activePanel === 'templates' && (
               <div className="p-2">
                 <div className="flex flex-col gap-2">
-                    {Object.entries(presetTemplates).map(([key, {name}]) => (
+                    {Object.entries(presetTemplates).map(([key, {name, iconLanguage}]) => (
                       <Button key={key} variant="ghost" className="justify-start" onClick={() => handleTemplateSelect(key)}>
+                        <LanguageIcon language={iconLanguage} />
                         {name}
                       </Button>
                     ))}
@@ -768,7 +780,7 @@ export default function PolyglotStudio() {
                         : 'hover:bg-accent/50'
                     )}
                   >
-                    <FileText className="w-4 h-4" />
+                    <LanguageIcon language={file.language} fileName={file.name} />
                     <span className="truncate">{file.name}</span>
                     <Button
                       variant="ghost"

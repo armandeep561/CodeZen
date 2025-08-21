@@ -1,11 +1,13 @@
+
 'use client';
 
-import { FileText, Plus, Trash2, ChevronDown, Folder, FolderPlus, Edit, Check, X, FilePlus } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, Folder, FolderPlus, Edit, Check, X, FilePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { LanguageValue } from '@/lib/templates';
 import React, { useState } from 'react';
 import { Input } from '../ui/input';
+import { LanguageIcon } from './language-icon';
 
 export interface FileNode {
   id: string;
@@ -224,7 +226,7 @@ function FileOrFolder({ node, onFileSelect, onFileDelete, onFolderDelete, onRena
             )}
             onClick={() => onFileSelect(node.id)}
         >
-          <FileText className="w-4 h-4 mr-2" />
+          <LanguageIcon language={node.language} fileName={node.name} />
           {!isRenaming ? (
             <span className="flex-1 truncate text-left">{node.name}</span>
           ) : (
@@ -267,7 +269,7 @@ function NewEntryInput({ type, onCreate, onCancel }: NewEntryInputProps) {
 
   return (
     <li className="flex items-center gap-1 p-1">
-      {type === 'folder' ? <Folder className="w-4 h-4"/> : <FileText className="w-4 h-4"/>}
+      {type === 'folder' ? <Folder className="w-4 h-4 mr-2"/> : <LanguageIcon fileName={name} />}
       <Input
         type="text"
         value={name}
