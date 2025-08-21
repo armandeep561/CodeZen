@@ -88,6 +88,7 @@ interface SearchResult {
   fileName: string;
   line: string;
   lineNumber: number;
+  start: number;
 }
 
 const MainContent = ({
@@ -357,15 +358,22 @@ export default function PolyglotStudio() {
         files.forEach(file => {
             if (file.type === 'file' && file.content) {
                 const lines = file.content.split('\n');
+                let charIndex = 0;
                 lines.forEach((line, index) => {
-                    if (line.toLowerCase().includes(searchQuery.toLowerCase())) {
+                    const lowerCaseLine = line.toLowerCase();
+                    const lowerCaseQuery = searchQuery.toLowerCase();
+                    let matchIndex = lowerCaseLine.indexOf(lowerCaseQuery);
+                    while (matchIndex !== -1) {
                         results.push({
                             fileId: file.id,
                             fileName: file.name,
                             lineNumber: index + 1,
-                            line: line.trim()
+                            line: line.trim(),
+                            start: charIndex + matchIndex,
                         });
+                        matchIndex = lowerCaseLine.indexOf(lowerCaseQuery, matchIndex + 1);
                     }
+                    charIndex += line.length + 1; // +1 for the newline character
                 });
             }
         });
@@ -373,7 +381,7 @@ export default function PolyglotStudio() {
     } else {
         setSearchResults([]);
     }
-  }, [searchQuery, files]);
+}, [searchQuery, files]);
 
   useEffect(() => {
     if (selection && editorRef.current) {
@@ -616,24 +624,8 @@ export default function PolyglotStudio() {
     handleFileSelect(result.fileId);
     setActivePanel('explorer');
     setActiveView('editor');
-  
-    const file = files.find(f => f.id === result.fileId);
-    if (file && file.content && searchQuery) {
-      const lines = file.content.split('\n');
-      const lineIndex = result.lineNumber - 1;
-      
-      let lineStart = 0;
-      for (let i = 0; i < lineIndex; i++) {
-        lineStart += lines[i].length + 1;
-      }
-      
-      const termIndex = lines[lineIndex].toLowerCase().indexOf(searchQuery.toLowerCase());
-      
-      if (termIndex !== -1) {
-        const start = lineStart + termIndex;
-        const end = start + searchQuery.length;
-        setSelection({ start, end });
-      }
+    if (searchQuery) {
+        setSelection({ start: result.start, end: result.start + searchQuery.length });
     }
   };
   
