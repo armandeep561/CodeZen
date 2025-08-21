@@ -14,6 +14,7 @@ import {z} from 'genkit';
 const ExecuteCodeInputSchema = z.object({
   language: z.string().describe('The programming language of the code.'),
   code: z.string().describe('The code snippet to execute.'),
+  stdin: z.string().optional().describe("The user's input to the program."),
 });
 export type ExecuteCodeInput = z.infer<typeof ExecuteCodeInputSchema>;
 
@@ -30,13 +31,19 @@ const prompt = ai.definePrompt({
   name: 'executeCodePrompt',
   input: {schema: ExecuteCodeInputSchema},
   output: {schema: ExecuteCodeOutputSchema},
-  prompt: `You are a code execution engine. You will receive a snippet of code in a specified language and you must respond with ONLY the output that code would produce if it were executed. Do not provide any explanation, only the raw output.
+  prompt: `You are a code execution engine. You will receive a snippet of code in a specified language and you must respond with ONLY the output that code would produce if it were executed. If the code requires user input, provide the prompt for that input. If you receive stdin content, continue the execution with that input. Do not provide any explanation, only the raw output.
 
   Language: {{{language}}}
   Code:
   \`\`\`
   {{{code}}}
   \`\`\`
+  {{#if stdin}}
+  User Input:
+  \`\`\`
+  {{{stdin}}}
+  \`\`\`
+  {{/if}}
   `,
 });
 
