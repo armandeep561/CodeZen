@@ -3,7 +3,6 @@
 
 import { useState, useCallback, useRef, FormEvent, useEffect } from 'react';
 import {
-  Download,
   Play,
   FileText,
   LoaderCircle,
@@ -14,6 +13,7 @@ import {
   Search,
   X,
   type LucideIcon,
+  Hexagon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -282,36 +282,11 @@ export default function PolyglotStudio() {
     [code, selectedLanguage, toast, history, activeFile, getFullHtml]
   );
 
-  const handleRunCode = useCallback(() => {
-    toast({
-      title: 'Running Code...',
-      description: `Executing your ${selectedLanguage.label} code.`,
-    });
-    execute();
-  }, [execute, selectedLanguage.label, toast]);
-
   const handleUserInputSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!userInput.trim() || isExecuting) return;
     execute(userInput.trim());
   };
-
-  const handleDownload = useCallback(() => {
-    if (!activeFile) return;
-    const blob = new Blob([activeFile.content!], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-a.href = url;
-    a.download = activeFile.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({
-      title: 'Download Started',
-      description: `Your ${activeFile.name} file is downloading.`,
-    });
-  }, [activeFile, toast]);
   
   const getFileLanguage = (fileName: string): LanguageValue => {
     const extension = fileName.split('.').pop()?.toLowerCase();
@@ -470,15 +445,18 @@ a.href = url;
   )
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex h-screen bg-background text-foreground font-body">
       <div className="flex flex-col w-12 bg-card border-r items-center py-2 shrink-0">
+         <a href="#" className="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-4.44h.001c-1.43.04-2.8.54-3.92 1.45A5.05 5.05 0 0 0 2.2 7.3V12a5.05 5.05 0 0 0 1.66 3.75c1.12.9 2.5 1.4 3.92 1.45h.001h4.44c1.43-.04 2.8-.54 3.92-1.45A5.05 5.05 0 0 0 17.8 12V7.3a5.05 5.05 0 0 0-1.66-3.75C15.02 2.54 13.65 2.04 12.22 2Z"/><path d="M6.26 6.26 12.5 12.5l6.24-6.24"/><path d="m12.5 12.5-6.24 6.24 6.24 6.24"/></svg>
+         </a>
         <SideBarButton Icon={Files} panel="explorer" />
         <SideBarButton Icon={Search} panel="search" />
         <Button variant="ghost" size="icon">
           <Code className="w-6 h-6" />
         </Button>
         <Button variant="ghost" size="icon">
-          <Settings className="w-6 h-6" />
+          <Hexagon className="w-6 h-6" />
         </Button>
         <div className="mt-auto flex flex-col items-center">
             <Button variant="ghost" size="icon">
@@ -494,7 +472,7 @@ a.href = url;
         <div className="w-64 bg-card border-r flex flex-col shrink-0">
             {activePanel === 'explorer' && (
                 <>
-                <div className="p-2 border-b">
+                <div className="p-2 border-b h-12 flex items-center">
                     <h2 className="text-sm font-semibold tracking-widest uppercase">Explorer</h2>
                 </div>
                 <ScrollArea className="flex-1">
@@ -543,21 +521,9 @@ a.href = url;
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-         <header className="flex h-12 items-center px-4 border-b shrink-0 justify-between">
-            <h1 className="text-xl font-bold font-headline">codezen</h1>
-            <div className="flex items-center gap-2">
-                <Button onClick={handleRunCode} disabled={isExecuting || !activeFile}>
-                    <Play className="mr-2 h-4 w-4" /> Run
-                </Button>
-                 <Button onClick={handleDownload} variant="ghost" disabled={!activeFile}>
-                    <Download className="mr-2 h-4 w-4" /> Download
-                </Button>
-            </div>
-        </header>
-
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
           <div className="flex flex-col h-full">
-            <div className="flex items-center border-b border-t">
+            <div className="flex items-center border-b border-t h-12">
               {openFileIds.map(fileId => {
                   const file = files.find(f => f.id === fileId);
                   if(!file) return null;
@@ -566,7 +532,7 @@ a.href = url;
                         key={fileId}
                         onClick={() => setActiveFileId(fileId)}
                         className={cn(
-                            "flex items-center gap-2 px-4 py-2 border-r cursor-pointer",
+                            "flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-full",
                             activeFileId === fileId ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                         )}
                     >
@@ -593,10 +559,10 @@ a.href = url;
           
           <div className="flex flex-col h-full border-l">
              <Tabs defaultValue="preview" className="flex flex-col h-full">
-                <div className="flex-shrink-0 border-b">
-                    <TabsList className="bg-transparent rounded-none p-0 m-0">
-                        <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-accent">Preview</TabsTrigger>
-                        <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-accent">Console</TabsTrigger>
+                <div className="flex-shrink-0 border-b h-12">
+                    <TabsList className="bg-transparent rounded-none p-0 m-0 h-full">
+                        <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-primary">Preview</TabsTrigger>
+                        <TabsTrigger value="console" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-primary">Console</TabsTrigger>
                     </TabsList>
                 </div>
                 <TabsContent value="preview" className="flex-1 bg-white">
