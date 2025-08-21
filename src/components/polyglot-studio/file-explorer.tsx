@@ -258,8 +258,8 @@ function NewEntryInput({ type, onCreate, onCancel }: NewEntryInputProps) {
   const [name, setName] = useState('');
 
   const handleSubmit = () => {
-    if (name) {
-      onCreate(name);
+    if (name.trim()) {
+      onCreate(name.trim());
     } else {
       onCancel();
     }
@@ -279,7 +279,7 @@ function NewEntryInput({ type, onCreate, onCancel }: NewEntryInputProps) {
             if (e.key === 'Enter') handleSubmit();
             if (e.key === 'Escape') onCancel();
         }}
-        onBlur={onCancel}
+        onBlur={handleSubmit}
       />
     </li>
   )
