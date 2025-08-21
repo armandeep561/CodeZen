@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -129,6 +128,7 @@ export default function PolyglotStudio() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   
   const editorRef = useRef<HTMLDivElement>(null);
+  const codeContainerRef = useRef<HTMLDivElement>(null);
   const [activeLine, setActiveLine] = useState<number | null>(null);
 
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -210,9 +210,6 @@ export default function PolyglotStudio() {
         console.warn = (...args) => {
           window.parent.postMessage({ type: 'console', level: 'warn', args: args.map(a => String(a)) }, '*');
           originalWarn.apply(console, args);
-        };
-        console.error = (...args) => {
-           window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
         };
         window.addEventListener('error', (e) => {
            window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
@@ -305,6 +302,13 @@ export default function PolyglotStudio() {
         }
     }
   }, [activeLine]);
+  
+  useEffect(() => {
+    const codeDiv = codeContainerRef.current;
+    if (codeDiv && codeDiv.innerText !== code) {
+      codeDiv.innerText = code;
+    }
+  }, [code]);
 
 
   const scrollToBottom = () => {
@@ -566,20 +570,21 @@ export default function PolyglotStudio() {
     }
   };
 
-  const renderCode = () => {
+  const renderLineNumbers = () => {
     if (!code) return null;
-    return code.split('\n').map((line, index) => {
-      const isLineActive = activeLine === (index + 1) && searchQuery;
-      return (
-        <div key={index} data-line-number={index + 1} className="flex">
-          <span className="w-10 text-right pr-4 text-muted-foreground select-none">{index + 1}</span>
-          <pre className="flex-1">
-             {isLineActive ? <Highlight text={line} query={searchQuery}/> : line}
-          </pre>
-        </div>
-      );
-    });
+    const lineCount = code.split('\n').length;
+    return (
+      <div className="w-10 text-right pr-4 text-muted-foreground select-none">
+        {Array.from({ length: lineCount }, (_, i) => (
+          <div key={i}>{i + 1}</div>
+        ))}
+      </div>
+    );
   };
+  
+  const handleCodeInput = (e: FormEvent<HTMLDivElement>) => {
+    setCode(e.currentTarget.innerText);
+  }
 
   return (
     <div className="flex h-screen bg-background text-foreground font-body">
@@ -736,12 +741,17 @@ export default function PolyglotStudio() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
           <div className="flex flex-col h-full bg-background relative">
-             <div className="flex-1 relative h-full">
+             <div className="absolute inset-0 w-full h-full font-code text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm overflow-auto">
                 {activeFile ? (
-                    <div className="absolute inset-0 w-full h-full font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm overflow-auto">
-                        <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={e => setCode(e.currentTarget.innerText)} className="outline-none">
-                            {renderCode()}
-                        </div>
+                    <div ref={editorRef} className="flex">
+                        {renderLineNumbers()}
+                        <pre
+                            ref={codeContainerRef}
+                            contentEditable={true}
+                            suppressContentEditableWarning={true}
+                            onInput={handleCodeInput}
+                            className="flex-1 outline-none whitespace-pre-wrap"
+                        />
                     </div>
                 ) : (
                     <div className="flex items-center justify-center h-full text-muted-foreground">
