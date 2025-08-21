@@ -360,18 +360,14 @@ export default function PolyglotStudio() {
                 const lines = file.content.split('\n');
                 let charIndex = 0;
                 lines.forEach((line, index) => {
-                    const lowerCaseLine = line.toLowerCase();
-                    const lowerCaseQuery = searchQuery.toLowerCase();
-                    let matchIndex = lowerCaseLine.indexOf(lowerCaseQuery);
-                    while (matchIndex !== -1) {
+                    if (line.toLowerCase().includes(searchQuery.toLowerCase())) {
                         results.push({
                             fileId: file.id,
                             fileName: file.name,
                             lineNumber: index + 1,
                             line: line.trim(),
-                            start: charIndex + matchIndex,
+                            start: charIndex + line.toLowerCase().indexOf(searchQuery.toLowerCase()),
                         });
-                        matchIndex = lowerCaseLine.indexOf(lowerCaseQuery, matchIndex + 1);
                     }
                     charIndex += line.length + 1; // +1 for the newline character
                 });
