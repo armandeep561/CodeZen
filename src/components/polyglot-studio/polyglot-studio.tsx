@@ -36,8 +36,6 @@ import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { LanguageIcon } from './language-icon';
-import { Highlight } from './highlight';
-
 
 interface HistoryItem {
   type: 'output' | 'input';
@@ -88,101 +86,23 @@ interface SearchResult {
   fileName: string;
   line: string;
   lineNumber: number;
-  start: number;
 }
 
-const MainContent = ({
-  activeView,
-  activeOutputTab,
-  setActiveOutputTab,
-  output,
-  history,
-  isExecuting,
-  selectedLanguage,
-  outputEndRef,
-  handleUserInputSubmit,
-  userInput,
-  setUserInput,
-  editorRef,
-  activeFileId,
-  code,
-  setCode,
-  activeFile,
-}) => {
-  if (activeView === 'output') {
-    return (
-      <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
-          <TabsContent value="preview" className="flex-1 bg-white m-0">
-                <iframe
-                  srcDoc={output}
-                  title="Code Preview"
-                  sandbox="allow-scripts allow-modals"
-                  className="w-full h-full border-0"
-              />
-          </TabsContent>
-          <TabsContent value="console" className="flex-1 bg-card text-card-foreground m-0">
-              <div className="p-4 h-full flex flex-col gap-2 flex-1">
-                  <ScrollArea className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm">
-                      {history.length === 0 && !isExecuting && (
-                      <pre className="whitespace-pre-wrap text-muted-foreground">
-                          Console output will appear here. Click 'Run' to execute your code.
-                      </pre>
-                      )}
-                      {history.map((item, index) => (
-                      <div key={index}>
-                          {item.type === 'output' ? (
-                          <pre className="whitespace-pre-wrap">
-                              {item.content}
-                          </pre>
-                          ) : (
-                          <pre className="whitespace-pre-wrap text-muted-foreground">
-                              &gt; {item.content}
-                          </pre>
-                          )}
-                      </div>
-                      ))}
-                      {isExecuting && !selectedLanguage.isWeb && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                          <LoaderCircle className="w-5 h-5 animate-spin" />
-                          <h3 className="font-semibold">Executing...</h3>
-                      </div>
-                      )}
-                      <div ref={outputEndRef} />
-                  </ScrollArea>
-                  <form onSubmit={handleUserInputSubmit} className="flex gap-2">
-                      <Input
-                      type="text"
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                      placeholder="Type your input here..."
-                      className="flex-1 font-code bg-muted/50"
-                      disabled={isExecuting || selectedLanguage.isWeb}
-                      />
-                      <Button
-                      type="submit"
-                      variant="secondary"
-                      disabled={isExecuting || selectedLanguage.isWeb}
-                      >
-                      <Send className="w-4 h-4" />
-                      </Button>
-                  </form>
-              </div>
-          </TabsContent>
-      </Tabs>
-    );
-  }
-
+const Highlight = ({ text, query }) => {
+  if (!query) return <span>{text}</span>;
+  const parts = text.split(new RegExp(`(${query})`, 'gi'));
   return (
-    <div className="flex-1 relative h-full">
-      <Textarea
-        ref={editorRef}
-        value={activeFileId ? code : ''}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="Select a file to start coding, or create a new one."
-        className="absolute inset-0 w-full h-full resize-none font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm"
-        disabled={!activeFile}
-      />
-    </div>
+    <span>
+      {parts.map((part, index) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <span key={index} className="search-highlight">
+            {part}
+          </span>
+        ) : (
+          part
+        )
+      )}
+    </span>
   );
 };
 
@@ -208,8 +128,8 @@ export default function PolyglotStudio() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-  const [selection, setSelection] = useState<{ start: number, end: number } | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [activeLine, setActiveLine] = useState<number | null>(null);
 
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [newEntry, setNewEntry] = useState<{ parentId: string | null, type: 'file' | 'folder' } | null>(null);
@@ -354,42 +274,37 @@ export default function PolyglotStudio() {
 
   useEffect(() => {
     if (searchQuery) {
-        const results: SearchResult[] = [];
-        files.forEach(file => {
-            if (file.type === 'file' && file.content) {
-                const lines = file.content.split('\n');
-                let charIndex = 0;
-                lines.forEach((line, index) => {
-                    if (line.toLowerCase().includes(searchQuery.toLowerCase())) {
-                        results.push({
-                            fileId: file.id,
-                            fileName: file.name,
-                            lineNumber: index + 1,
-                            line: line.trim(),
-                            start: charIndex + line.toLowerCase().indexOf(searchQuery.toLowerCase()),
-                        });
-                    }
-                    charIndex += line.length + 1; // +1 for the newline character
-                });
+      const results: SearchResult[] = [];
+      files.forEach(file => {
+        if (file.type === 'file' && file.content) {
+          const lines = file.content.split('\n');
+          lines.forEach((line, index) => {
+            if (line.toLowerCase().includes(searchQuery.toLowerCase())) {
+              results.push({
+                fileId: file.id,
+                fileName: file.name,
+                lineNumber: index + 1,
+                line: line.trim(),
+              });
             }
-        });
-        setSearchResults(results);
+          });
+        }
+      });
+      setSearchResults(results);
     } else {
-        setSearchResults([]);
+      setSearchResults([]);
+      setActiveLine(null);
     }
-}, [searchQuery, files]);
+  }, [searchQuery, files]);
 
   useEffect(() => {
-    if (selection && editorRef.current) {
-        editorRef.current.focus();
-        editorRef.current.setSelectionRange(selection.start, selection.end);
-
-        const lines = editorRef.current.value.substring(0, selection.start).split('\n');
-        const lineNumber = lines.length;
-        const lineHeight = 19; 
-        editorRef.current.scrollTop = (lineNumber - 5) * lineHeight;
+    if (activeLine && editorRef.current) {
+        const lineEl = editorRef.current.querySelector(`[data-line-number="${activeLine}"]`);
+        if (lineEl) {
+            lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
-  }, [selection]);
+  }, [activeLine]);
 
 
   const scrollToBottom = () => {
@@ -578,7 +493,7 @@ export default function PolyglotStudio() {
     }
     setActiveFileId(fileId);
     setActiveView('editor');
-    setSelection(null); 
+    setActiveLine(null);
 
     const lang = languages.find((l) => l.value === file.language);
     if (lang?.isWeb) {
@@ -620,9 +535,7 @@ export default function PolyglotStudio() {
     handleFileSelect(result.fileId);
     setActivePanel('explorer');
     setActiveView('editor');
-    if (searchQuery) {
-        setSelection({ start: result.start, end: result.start + searchQuery.length });
-    }
+    setActiveLine(result.lineNumber);
   };
   
   const handleTemplateSelect = (templateKey: string) => {
@@ -652,6 +565,21 @@ export default function PolyglotStudio() {
     if (container) {
       container.scrollLeft += event.deltaY;
     }
+  };
+
+  const renderCode = () => {
+    if (!code) return null;
+    return code.split('\n').map((line, index) => {
+      const isLineActive = activeLine === (index + 1) && searchQuery;
+      return (
+        <div key={index} data-line-number={index + 1} className="flex">
+          <span className="w-10 text-right pr-4 text-muted-foreground select-none">{index + 1}</span>
+          <pre className="flex-1">
+             {isLineActive ? <Highlight text={line} query={searchQuery}/> : line}
+          </pre>
+        </div>
+      );
+    });
   };
 
   return (
@@ -809,15 +737,18 @@ export default function PolyglotStudio() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
           <div className="flex flex-col h-full bg-background relative">
-            <div className="flex-1 relative h-full">
-              <Textarea
-                ref={editorRef}
-                value={activeFileId ? code : ''}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Select a file to start coding, or create a new one."
-                className="absolute inset-0 w-full h-full resize-none font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm"
-                disabled={!activeFile}
-              />
+             <div className="flex-1 relative h-full">
+                {activeFile ? (
+                    <div className="absolute inset-0 w-full h-full font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm overflow-auto">
+                        <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={e => setCode(e.currentTarget.innerText)} className="outline-none">
+                            {renderCode()}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                        Select a file to start coding, or create a new one.
+                    </div>
+                )}
             </div>
           </div>
           
