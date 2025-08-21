@@ -12,7 +12,6 @@ import {
   Search,
   X,
   type LucideIcon,
-  Hexagon,
   Download,
   Play,
   FolderPlus,
@@ -85,6 +84,102 @@ interface SearchResult {
   line: string;
   lineNumber: number;
 }
+
+const MainContent = ({
+  activeView,
+  activeOutputTab,
+  setActiveOutputTab,
+  output,
+  history,
+  isExecuting,
+  selectedLanguage,
+  outputEndRef,
+  handleUserInputSubmit,
+  userInput,
+  setUserInput,
+  editorRef,
+  activeFileId,
+  code,
+  setCode,
+  activeFile,
+}) => {
+  if (activeView === 'output') {
+    return (
+      <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
+          <TabsContent value="preview" className="flex-1 bg-white m-0">
+                <iframe
+                  srcDoc={output}
+                  title="Code Preview"
+                  sandbox="allow-scripts allow-modals"
+                  className="w-full h-full border-0"
+              />
+          </TabsContent>
+          <TabsContent value="console" className="flex-1 bg-card text-card-foreground m-0">
+              <div className="p-4 h-full flex flex-col gap-2 flex-1">
+                  <ScrollArea className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm">
+                      {history.length === 0 && !isExecuting && (
+                      <pre className="whitespace-pre-wrap text-muted-foreground">
+                          Console output will appear here. Click 'Run' to execute your code.
+                      </pre>
+                      )}
+                      {history.map((item, index) => (
+                      <div key={index}>
+                          {item.type === 'output' ? (
+                          <pre className="whitespace-pre-wrap">
+                              {item.content}
+                          </pre>
+                          ) : (
+                          <pre className="whitespace-pre-wrap text-muted-foreground">
+                              &gt; {item.content}
+                          </pre>
+                          )}
+                      </div>
+                      ))}
+                      {isExecuting && !selectedLanguage.isWeb && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                          <LoaderCircle className="w-5 h-5 animate-spin" />
+                          <h3 className="font-semibold">Executing...</h3>
+                      </div>
+                      )}
+                      <div ref={outputEndRef} />
+                  </ScrollArea>
+                  <form onSubmit={handleUserInputSubmit} className="flex gap-2">
+                      <Input
+                      type="text"
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      placeholder="Type your input here..."
+                      className="flex-1 font-code bg-muted/50"
+                      disabled={isExecuting || selectedLanguage.isWeb}
+                      />
+                      <Button
+                      type="submit"
+                      variant="secondary"
+                      disabled={isExecuting || selectedLanguage.isWeb}
+                      >
+                      <Send className="w-4 h-4" />
+                      </Button>
+                  </form>
+              </div>
+          </TabsContent>
+      </Tabs>
+    );
+  }
+
+  return (
+    <div className="flex-1 relative h-full">
+      <Textarea
+        ref={editorRef}
+        value={activeFileId ? code : ''}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="Select a file to start coding, or create a new one."
+        className="absolute inset-0 w-full h-full resize-none font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm"
+        disabled={!activeFile}
+      />
+    </div>
+  );
+};
+
 
 export default function PolyglotStudio() {
   const [files, setFiles] = useState<FileNode[]>(initialFiles);
@@ -487,85 +582,6 @@ export default function PolyglotStudio() {
     }
   };
 
-  const MainContent = () => {
-    if (activeView === 'output') {
-      return (
-        <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
-            <TabsContent value="preview" className="flex-1 bg-white m-0">
-                  <iframe
-                    srcDoc={output}
-                    title="Code Preview"
-                    sandbox="allow-scripts allow-modals"
-                    className="w-full h-full border-0"
-                />
-            </TabsContent>
-            <TabsContent value="console" className="flex-1 bg-card text-card-foreground m-0">
-                <div className="p-4 h-full flex flex-col gap-2 flex-1">
-                    <ScrollArea className="flex-1 p-4 rounded-md bg-muted/50 font-code text-sm">
-                        {history.length === 0 && !isExecuting && (
-                        <pre className="whitespace-pre-wrap text-muted-foreground">
-                            Console output will appear here. Click 'Run' to execute your code.
-                        </pre>
-                        )}
-                        {history.map((item, index) => (
-                        <div key={index}>
-                            {item.type === 'output' ? (
-                            <pre className="whitespace-pre-wrap">
-                                {item.content}
-                            </pre>
-                            ) : (
-                            <pre className="whitespace-pre-wrap text-muted-foreground">
-                                &gt; {item.content}
-                            </pre>
-                            )}
-                        </div>
-                        ))}
-                        {isExecuting && !selectedLanguage.isWeb && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <LoaderCircle className="w-5 h-5 animate-spin" />
-                            <h3 className="font-semibold">Executing...</h3>
-                        </div>
-                        )}
-                        <div ref={outputEndRef} />
-                    </ScrollArea>
-                    <form onSubmit={handleUserInputSubmit} className="flex gap-2">
-                        <Input
-                        type="text"
-                        value={userInput}
-                        onChange={(e) => setUserInput(e.target.value)}
-                        placeholder="Type your input here..."
-                        className="flex-1 font-code bg-muted/50"
-                        disabled={isExecuting || selectedLanguage.isWeb}
-                        />
-                        <Button
-                        type="submit"
-                        variant="secondary"
-                        disabled={isExecuting || selectedLanguage.isWeb}
-                        >
-                        <Send className="w-4 h-4" />
-                        </Button>
-                    </form>
-                </div>
-            </TabsContent>
-        </Tabs>
-      );
-    }
-  
-    return (
-      <div className="flex-1 relative h-full">
-        <Textarea
-          ref={editorRef}
-          value={activeFileId ? code : ''}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Select a file to start coding, or create a new one."
-          className="absolute inset-0 w-full h-full resize-none font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm"
-          disabled={!activeFile}
-        />
-      </div>
-    );
-  };
-
-
   return (
     <div className="flex h-screen bg-background text-foreground font-body">
       <div className="flex flex-col w-14 bg-card border-r items-center py-2 shrink-0">
@@ -705,7 +721,24 @@ export default function PolyglotStudio() {
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
             {/* Editor/Main Panel */}
             <div className="flex flex-col h-full">
-              <MainContent/>
+              <MainContent
+                activeView={activeView}
+                activeOutputTab={activeOutputTab}
+                setActiveOutputTab={setActiveOutputTab}
+                output={output}
+                history={history}
+                isExecuting={isExecuting}
+                selectedLanguage={selectedLanguage}
+                outputEndRef={outputEndRef}
+                handleUserInputSubmit={handleUserInputSubmit}
+                userInput={userInput}
+                setUserInput={setUserInput}
+                editorRef={editorRef}
+                activeFileId={activeFileId}
+                code={code}
+                setCode={setCode}
+                activeFile={activeFile}
+               />
             </div>
             
             {/* Output Panel */}
@@ -782,4 +815,6 @@ export default function PolyglotStudio() {
 }
 
     
+    
+
     
