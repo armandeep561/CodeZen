@@ -1,13 +1,11 @@
-
 'use client';
 
-import { FileCode2, Files, Search, Settings } from 'lucide-react';
+import { FileCode, Files, Search, Settings, Moon, Sun, LayoutGrid } from 'lucide-react';
 
 import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
-  SidebarTrigger,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -18,33 +16,67 @@ export function PolyglotStudioSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <FileCode2 className="w-6 h-6 text-primary" />
-          <h1 className="text-xl font-headline font-bold text-foreground">Polyglot Studio</h1>
+        <div className="flex items-center justify-center h-12">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 256 256"
+              className="h-6 w-6"
+            >
+              <rect width="256" height="256" fill="none" />
+              <line
+                x1="208"
+                y1="128"
+                x2="128"
+                y2="208"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="16"
+              />
+              <line
+                x1="192"
+                y1="40"
+                x2="40"
+                y2="192"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="16"
+              />
+            </svg>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Files">
+            <SidebarMenuButton tooltip="Files" variant="ghost" className="w-full justify-center">
               <Files />
-              <span>Files</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Search">
+            <SidebarMenuButton tooltip="Search" variant="ghost" className="w-full justify-center">
               <Search />
-              <span>Search</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Layout" variant="ghost" className="w-full justify-center">
+              <LayoutGrid />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Settings" variant="ghost" className="w-full justify-center">
+              <Settings />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Settings">
-              <Settings />
-              <span>Settings</span>
+            <SidebarMenuButton tooltip="Toggle Theme" variant="ghost" className="w-full justify-center">
+              <Moon />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

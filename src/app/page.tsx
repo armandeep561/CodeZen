@@ -6,11 +6,14 @@ export default function Home() {
   return (
     <SidebarProvider>
       <PolyglotStudioSidebar />
-      <SidebarInset>
-        <main className="bg-background min-h-screen">
+      <div className="flex flex-col w-full">
+         <header className="flex h-12 items-center px-4 border-b shrink-0">
+           <h1 className="text-xl font-bold font-headline">codezen</h1>
+         </header>
+        <main className="flex-1">
           <PolyglotStudio />
         </main>
-      </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }
