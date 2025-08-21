@@ -5,7 +5,7 @@ import { FileText } from 'lucide-react';
 import type { LanguageValue } from '@/lib/templates';
 import { languages } from '@/lib/templates';
 import { FaJava, FaPhp, FaPython } from 'react-icons/fa';
-import { SiHtml5, SiCss3, SiJavascript, SiC, SiCplusplus } from 'react-icons/si';
+import { SiHtml5, SiCss3, SiJavascript, SiC, SiCplusplus, SiPhp } from 'react-icons/si';
 
 const icons: Record<string, React.ReactNode> = {
     html: <SiHtml5 style={{ color: '#E34F26' }} />,
