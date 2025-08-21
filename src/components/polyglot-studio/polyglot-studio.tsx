@@ -3,7 +3,6 @@
 
 import { useState, useCallback, useRef, FormEvent, useEffect } from 'react';
 import {
-  Play,
   FileText,
   LoaderCircle,
   Send,
@@ -528,7 +527,7 @@ export default function PolyglotStudio() {
           {/* Editor Panel */}
           <div className="flex flex-col h-full">
              <div className="flex items-center border-b border-t h-12">
-                <div className="flex-1 overflow-x-auto overflow-y-hidden">
+                <div className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar">
                    <div className="flex">
                     {openFileIds.map(fileId => {
                         const file = files.find(f => f.id === fileId);
