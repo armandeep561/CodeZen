@@ -72,6 +72,8 @@ const initialFiles: FileNode[] = [
 ];
 
 type Panel = 'explorer' | 'search';
+type ActiveView = 'editor' | 'output';
+type OutputTab = 'preview' | 'console';
 
 interface SearchResult {
   fileId: string;
@@ -87,6 +89,9 @@ export default function PolyglotStudio() {
 
   const [activePanel, setActivePanel] = useState<Panel>('explorer');
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+
+  const [activeView, setActiveView] = useState<ActiveView>('editor');
+  const [activeOutputTab, setActiveOutputTab] = useState<OutputTab>('preview');
 
   const [output, setOutput] = useState<string>('');
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -214,10 +219,9 @@ export default function PolyglotStudio() {
         editorRef.current.focus();
         editorRef.current.setSelectionRange(selection.start, selection.end);
 
-        // Scroll into view
         const lines = editorRef.current.value.substring(0, selection.start).split('\n');
         const lineNumber = lines.length;
-        const lineHeight = 19; // Approximate line height based on font-size and line-height
+        const lineHeight = 19; 
         editorRef.current.scrollTop = (lineNumber - 1) * lineHeight;
     }
   }, [selection]);
@@ -337,7 +341,6 @@ export default function PolyglotStudio() {
   const handleFileDelete = (fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
     
-    // Close the tab if it's open
     setOpenFileIds(ids => ids.filter(id => id !== fileId));
 
     if (activeFileId === fileId) {
@@ -385,7 +388,8 @@ export default function PolyglotStudio() {
         setOpenFileIds(prev => [...prev, fileId]);
     }
     setActiveFileId(fileId);
-    setSelection(null); // Clear selection when changing files
+    setActiveView('editor');
+    setSelection(null); 
 
     const lang = languages.find((l) => l.value === file.language);
     if (!lang?.isWeb) {
@@ -400,13 +404,12 @@ export default function PolyglotStudio() {
 
     if (activeFileId === fileIdToClose) {
       if (newOpenFileIds.length > 0) {
-        // Find index of closed tab to determine next active tab
         const closedTabIndex = openFileIds.findIndex(id => id === fileIdToClose);
-        // Activate the previous tab, or the first one if the closed one was the first
         const newActiveIndex = Math.max(0, closedTabIndex - 1);
         setActiveFileId(newOpenFileIds[newActiveIndex]);
       } else {
         setActiveFileId(null);
+        setActiveView('output'); 
       }
     }
   };
@@ -431,7 +434,7 @@ export default function PolyglotStudio() {
       
       let start = 0;
       for(let i = 0; i < lineIndex; i++) {
-        start += lines[i].length + 1; // +1 for the newline character
+        start += lines[i].length + 1; 
       }
       const end = start + lines[lineIndex].length;
       setSelection({ start, end });
@@ -521,10 +524,11 @@ export default function PolyglotStudio() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 min-h-0">
+          {/* Editor Panel */}
           <div className="flex flex-col h-full">
              <div className="flex items-center border-b border-t h-12">
-                <ScrollArea className="h-full whitespace-nowrap">
+                <ScrollArea className="h-full whitespace-nowrap" orientation="horizontal">
                    <div className="flex h-full">
                     {openFileIds.map(fileId => {
                         const file = files.find(f => f.id === fileId);
@@ -532,10 +536,10 @@ export default function PolyglotStudio() {
                         return (
                           <div
                               key={fileId}
-                              onClick={() => setActiveFileId(fileId)}
+                              onClick={() => handleFileSelect(fileId)}
                               className={cn(
                                   "flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-full",
-                                  activeFileId === fileId ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+                                  activeFileId === fileId && activeView === 'editor' ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                               )}
                           >
                           <FileText className="w-4 h-4" />
@@ -561,8 +565,9 @@ export default function PolyglotStudio() {
             </div>
           </div>
           
+          {/* Output Panel */}
           <div className="flex flex-col h-full border-l">
-             <Tabs defaultValue="preview" className="flex flex-col h-full">
+             <Tabs value={activeOutputTab} onValueChange={(value) => setActiveOutputTab(value as OutputTab)} className="flex flex-col h-full">
                 <div className="flex-shrink-0 border-b h-12">
                     <TabsList className="bg-transparent rounded-none p-0 m-0 h-full">
                         <TabsTrigger value="preview" className="h-full rounded-none data-[state=active]:shadow-none data-[state=active]:border-b-2 border-primary">Preview</TabsTrigger>
