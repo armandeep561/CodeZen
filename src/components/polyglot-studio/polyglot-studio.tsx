@@ -229,21 +229,24 @@ export default function PolyglotStudio() {
 
     let htmlContent = htmlFile.content || '';
 
-    // Create a map of file names to content for quick lookup
-    const fileContentMap = new Map(files.map(f => [f.name, f.content]));
+    const fileContentMap = new Map(files.map(f => [f.name, f.content || '']));
 
     // Inject CSS
     const cssLinkRegex = /<link\s+[^>]*?href="([^"]+)"[^>]*?rel="stylesheet"[^>]*?>/g;
     htmlContent = htmlContent.replace(cssLinkRegex, (match, href) => {
-      const cssContent = fileContentMap.get(href);
-      return cssContent ? `<style>${cssContent}</style>` : match;
+        if (fileContentMap.has(href)) {
+            return `<style>${fileContentMap.get(href)}</style>`;
+        }
+        return match;
     });
-    
+
     // Inject JS
     const scriptTagRegex = /<script\s+[^>]*?src="([^"]+)"[^>]*?>\s*<\/script>/g;
     htmlContent = htmlContent.replace(scriptTagRegex, (match, src) => {
-      const jsContent = fileContentMap.get(src);
-      return jsContent ? `<script>${jsContent}</script>` : match;
+        if (fileContentMap.has(src)) {
+            return `<script>${fileContentMap.get(src)}</script>`;
+        }
+        return match;
     });
 
     // Inject console interceptor
@@ -602,9 +605,6 @@ export default function PolyglotStudio() {
          </a>
         <SideBarButton Icon={Files} panel="explorer" />
         <SideBarButton Icon={Search} panel="search" />
-        <Button variant="ghost" size="icon" className="h-12 w-12">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-hexagon"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        </Button>
         <div className="mt-auto flex flex-col items-center">
             <Button variant="ghost" size="icon" className="h-12 w-12">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
