@@ -97,6 +97,9 @@ export default function PolyglotStudio() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [selection, setSelection] = useState<{ start: number, end: number } | null>(null);
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const selectedLanguage =
@@ -205,6 +208,19 @@ export default function PolyglotStudio() {
         setSearchResults([]);
     }
   }, [searchQuery, files]);
+
+  useEffect(() => {
+    if (selection && editorRef.current) {
+        editorRef.current.focus();
+        editorRef.current.setSelectionRange(selection.start, selection.end);
+
+        // Scroll into view
+        const lines = editorRef.current.value.substring(0, selection.start).split('\n');
+        const lineNumber = lines.length;
+        const lineHeight = 19; // Approximate line height based on font-size and line-height
+        editorRef.current.scrollTop = (lineNumber - 1) * lineHeight;
+    }
+  }, [selection]);
 
 
   const scrollToBottom = () => {
@@ -394,6 +410,7 @@ a.href = url;
         setOpenFileIds(prev => [...prev, fileId]);
     }
     setActiveFileId(fileId);
+    setSelection(null); // Clear selection when changing files
 
     const lang = languages.find((l) => l.value === file.language);
     if (!lang?.isWeb) {
@@ -428,9 +445,22 @@ a.href = url;
     }
   }
 
-  const handleSearchResultClick = (fileId: string) => {
-      handleFileSelect(fileId);
-      setActivePanel('explorer');
+  const handleSearchResultClick = (result: SearchResult) => {
+    handleFileSelect(result.fileId);
+    setActivePanel('explorer');
+
+    const file = files.find(f => f.id === result.fileId);
+    if(file && file.content) {
+      const lines = file.content.split('\n');
+      const lineIndex = result.lineNumber - 1;
+      
+      let start = 0;
+      for(let i = 0; i < lineIndex; i++) {
+        start += lines[i].length + 1; // +1 for the newline character
+      }
+      const end = start + lines[lineIndex].length;
+      setSelection({ start, end });
+    }
   }
   
   const SideBarButton = ({Icon, panel}: {Icon: LucideIcon, panel: Panel}) => (
@@ -495,7 +525,7 @@ a.href = url;
                             <button 
                               key={index} 
                               className="text-left p-2 rounded-md hover:bg-accent/50 text-sm"
-                              onClick={() => handleSearchResultClick(result.fileId)}
+                              onClick={() => handleSearchResultClick(result)}
                             >
                                 <div className="font-semibold text-primary">{result.fileName}</div>
                                 <div className="text-muted-foreground text-xs">Line {result.lineNumber}</div>
@@ -551,6 +581,7 @@ a.href = url;
             </div>
             <div className="flex-1 relative">
                  <Textarea
+                    ref={editorRef}
                     value={activeFileId ? code : ''}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="Select a file to start coding, or create a new one."
