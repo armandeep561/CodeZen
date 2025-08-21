@@ -73,6 +73,13 @@ const initialFiles: FileNode[] = [
 
 type Panel = 'explorer' | 'search';
 
+interface SearchResult {
+  fileId: string;
+  fileName: string;
+  line: string;
+  lineNumber: number;
+}
+
 export default function PolyglotStudio() {
   const [files, setFiles] = useState<FileNode[]>(initialFiles);
   const [openFileIds, setOpenFileIds] = useState<string[]>(['html:1']);
@@ -87,6 +94,9 @@ export default function PolyglotStudio() {
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const { toast } = useToast();
   const outputEndRef = useRef<HTMLDivElement>(null);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const selectedLanguage =
@@ -172,6 +182,30 @@ export default function PolyglotStudio() {
     };
   }, []);
 
+  useEffect(() => {
+    if (searchQuery) {
+        const results: SearchResult[] = [];
+        files.forEach(file => {
+            if (file.type === 'file' && file.content) {
+                const lines = file.content.split('\n');
+                lines.forEach((line, index) => {
+                    if (line.toLowerCase().includes(searchQuery.toLowerCase())) {
+                        results.push({
+                            fileId: file.id,
+                            fileName: file.name,
+                            lineNumber: index + 1,
+                            line: line.trim()
+                        });
+                    }
+                });
+            }
+        });
+        setSearchResults(results);
+    } else {
+        setSearchResults([]);
+    }
+  }, [searchQuery, files]);
+
 
   const scrollToBottom = () => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -251,7 +285,7 @@ export default function PolyglotStudio() {
     const blob = new Blob([activeFile.content!], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
+a.href = url;
     a.download = activeFile.name;
     document.body.appendChild(a);
     a.click();
@@ -393,6 +427,11 @@ export default function PolyglotStudio() {
         setIsExplorerOpen(true);
     }
   }
+
+  const handleSearchResultClick = (fileId: string) => {
+      handleFileSelect(fileId);
+      setActivePanel('explorer');
+  }
   
   const SideBarButton = ({Icon, panel}: {Icon: LucideIcon, panel: Panel}) => (
      <Button variant={isExplorerOpen && activePanel === panel ? "secondary" : "ghost"} size="icon" onClick={() => togglePanel(panel)}>
@@ -442,9 +481,32 @@ export default function PolyglotStudio() {
                 </>
             )}
              {activePanel === 'search' && (
-                <div className="p-4">
-                    <h2 className="text-lg font-semibold mb-4">Search</h2>
-                    <Input placeholder="Search across all files..."/>
+                <div className="p-4 flex flex-col gap-4 h-full">
+                    <h2 className="text-lg font-semibold">Search</h2>
+                    <Input 
+                      placeholder="Search across all files..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <ScrollArea className="flex-1">
+                      <div className="flex flex-col gap-2">
+                        {searchResults.length > 0 ? (
+                          searchResults.map((result, index) => (
+                            <button 
+                              key={index} 
+                              className="text-left p-2 rounded-md hover:bg-accent/50 text-sm"
+                              onClick={() => handleSearchResultClick(result.fileId)}
+                            >
+                                <div className="font-semibold text-primary">{result.fileName}</div>
+                                <div className="text-muted-foreground text-xs">Line {result.lineNumber}</div>
+                                <div className="font-code text-accent-foreground truncate">{result.line}</div>
+                            </button>
+                          ))
+                        ) : (
+                          searchQuery && <p className="text-sm text-muted-foreground text-center p-4">No results found.</p>
+                        )}
+                      </div>
+                    </ScrollArea>
                 </div>
             )}
         </div>
