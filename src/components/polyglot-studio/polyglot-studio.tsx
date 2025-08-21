@@ -383,7 +383,7 @@ export default function PolyglotStudio() {
         const lines = editorRef.current.value.substring(0, selection.start).split('\n');
         const lineNumber = lines.length;
         const lineHeight = 19; 
-        editorRef.current.scrollTop = (lineNumber - 1) * lineHeight;
+        editorRef.current.scrollTop = (lineNumber - 5) * lineHeight;
     }
   }, [selection]);
 
@@ -616,20 +616,26 @@ export default function PolyglotStudio() {
     handleFileSelect(result.fileId);
     setActivePanel('explorer');
     setActiveView('editor');
-
+  
     const file = files.find(f => f.id === result.fileId);
-    if(file && file.content) {
+    if (file && file.content && searchQuery) {
       const lines = file.content.split('\n');
       const lineIndex = result.lineNumber - 1;
       
-      let start = 0;
-      for(let i = 0; i < lineIndex; i++) {
-        start += lines[i].length + 1; 
+      let lineStart = 0;
+      for (let i = 0; i < lineIndex; i++) {
+        lineStart += lines[i].length + 1;
       }
-      const end = start + lines[lineIndex].length;
-      setSelection({ start, end });
+      
+      const termIndex = lines[lineIndex].toLowerCase().indexOf(searchQuery.toLowerCase());
+      
+      if (termIndex !== -1) {
+        const start = lineStart + termIndex;
+        const end = start + searchQuery.length;
+        setSelection({ start, end });
+      }
     }
-  }
+  };
   
   const handleTemplateSelect = (templateKey: string) => {
     const template = presetTemplates[templateKey];
@@ -815,24 +821,16 @@ export default function PolyglotStudio() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
           <div className="flex flex-col h-full bg-background relative">
-              <MainContent
-                  activeView={activeView}
-                  activeOutputTab={activeOutputTab}
-                  setActiveOutputTab={setActiveOutputTab}
-                  output={output}
-                  history={history}
-                  isExecuting={isExecuting}
-                  selectedLanguage={selectedLanguage}
-                  outputEndRef={outputEndRef}
-                  handleUserInputSubmit={handleUserInputSubmit}
-                  userInput={userInput}
-                  setUserInput={setUserInput}
-                  editorRef={editorRef}
-                  activeFileId={activeFileId}
-                  code={code}
-                  setCode={setCode}
-                  activeFile={activeFile}
+            <div className="flex-1 relative h-full">
+              <Textarea
+                ref={editorRef}
+                value={activeFileId ? code : ''}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Select a file to start coding, or create a new one."
+                className="absolute inset-0 w-full h-full resize-none font-code bg-transparent text-gray-100 rounded-none border-0 focus-visible:ring-0 p-4 text-sm"
+                disabled={!activeFile}
               />
+            </div>
           </div>
           
           <div className="flex flex-col h-full border-l bg-card">
