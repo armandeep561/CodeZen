@@ -533,7 +533,6 @@ export default function PolyglotStudio() {
 
   const handleSearchResultClick = (result: SearchResult) => {
     handleFileSelect(result.fileId);
-    setActivePanel('explorer');
     setActiveView('editor');
     setActiveLine(result.lineNumber);
   };
