@@ -16,6 +16,7 @@ import {
   FolderPlus,
   FilePlus,
   PanelLeft,
+  Hexagon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -224,7 +225,7 @@ export default function PolyglotStudio() {
   const code = activeFile?.content ?? '';
 
   const getFullHtml = useCallback(() => {
-    const htmlFile = files.find(f => f.language === 'html');
+    const htmlFile = files.find(f => f.name === 'index.html') || files.find(f => f.language === 'html');
     if (!htmlFile) {
         return '<h1>No HTML file found to display.</h1><p>Please create an HTML file (e.g., index.html) to see a preview.</p>';
     }
@@ -232,7 +233,6 @@ export default function PolyglotStudio() {
     let htmlContent = htmlFile.content || '';
     const fileContentMap = new Map(files.map(f => [f.name, f.content || '']));
 
-    // 1. Inject console interceptor FIRST
     const consoleInterceptor = `
       <script>
         const originalLog = console.log;
@@ -251,6 +251,9 @@ export default function PolyglotStudio() {
           window.parent.postMessage({ type: 'console', level: 'error', args: args.map(a => String(a)) }, '*');
           originalError.apply(console, args);
         };
+        window.addEventListener('error', (e) => {
+           window.parent.postMessage({ type: 'console', level: 'error', args: [e.message] }, '*');
+        });
       </script>
     `;
     
@@ -260,22 +263,20 @@ export default function PolyglotStudio() {
       htmlContent = consoleInterceptor + htmlContent;
     }
 
-    // 2. Inject CSS
-    const cssLinkRegex = /<link\s+[^>]*?href="([^"]+)"[^>]*?rel="stylesheet"[^>]*?>/g;
+    const cssLinkRegex = /<link\s+[^>]*?href="([^"]+\.css)"[^>]*?rel="stylesheet"[^>]*?>/g;
     htmlContent = htmlContent.replace(cssLinkRegex, (match, href) => {
         if (fileContentMap.has(href)) {
             return `<style>${fileContentMap.get(href)}</style>`;
         }
-        return match; // Keep the original link tag if file not found
+        return match;
     });
 
-    // 3. Inject JS
-    const scriptTagRegex = /<script\s+[^>]*?src="([^"]+)"[^>]*?>\s*<\/script>/g;
+    const scriptTagRegex = /<script\s+[^>]*?src="([^"]+\.js)"[^>]*?>\s*<\/script>/g;
     htmlContent = htmlContent.replace(scriptTagRegex, (match, src) => {
         if (fileContentMap.has(src)) {
             return `<script>${fileContentMap.get(src)}</script>`;
         }
-        return match; // Keep the original script tag if file not found
+        return match;
     });
 
     return htmlContent;
@@ -537,8 +538,10 @@ export default function PolyglotStudio() {
 
     const lang = languages.find((l) => l.value === file.language);
     if (lang?.isWeb) {
+      setActiveOutputTab('preview');
       setHistory([]);
     } else {
+      setActiveOutputTab('console');
       setOutput('');
       setHistory([]);
     }
@@ -683,7 +686,7 @@ export default function PolyglotStudio() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center border-b h-12 pr-4 bg-card">
+        <div className="flex items-center border-b h-12 pr-2 bg-card">
           <div
             ref={tabsContainerRef}
             className="flex-1 overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
@@ -725,11 +728,11 @@ export default function PolyglotStudio() {
           </div>
           <div className="flex items-center gap-2 ml-auto pl-4">
               <Button variant="secondary" size="sm" onClick={handleDownload} disabled={!activeFile}>
-                <Download className="w-4 h-4" />
+                <Download className="w-4 h-4 mr-2" />
                 Download
               </Button>
               <Button size="sm" onClick={() => execute()} disabled={isExecuting}>
-                <Play className="w-4 h-4" />
+                <Play className="w-4 h-4 mr-2" />
                 Run
               </Button>
           </div>
