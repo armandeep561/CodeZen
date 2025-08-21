@@ -16,7 +16,6 @@ import {
   FolderPlus,
   FilePlus,
   PanelLeft,
-  Hexagon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -256,27 +255,21 @@ export default function PolyglotStudio() {
         });
       </script>
     `;
-    
+
     if (htmlContent.includes('<head>')) {
-      htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}`);
+      htmlContent = htmlContent.replace('<head>', `<head>${consoleInterceptor}</head>`);
     } else {
       htmlContent = consoleInterceptor + htmlContent;
     }
 
-    const cssLinkRegex = /<link\s+[^>]*?href="([^"]+\.css)"[^>]*?rel="stylesheet"[^>]*?>/g;
-    htmlContent = htmlContent.replace(cssLinkRegex, (match, href) => {
-        if (fileContentMap.has(href)) {
-            return `<style>${fileContentMap.get(href)}</style>`;
+    fileContentMap.forEach((content, name) => {
+        if (name.endsWith('.css')) {
+            const regex = new RegExp(`<link[^>]*href=(['"])${name}\\1[^>]*>`, 'g');
+            htmlContent = htmlContent.replace(regex, `<style>${content}</style>`);
+        } else if (name.endsWith('.js')) {
+            const regex = new RegExp(`<script[^>]*src=(['"])${name}\\1[^>]*><\\/script>`, 'g');
+            htmlContent = htmlContent.replace(regex, `<script>${content}</script>`);
         }
-        return match;
-    });
-
-    const scriptTagRegex = /<script\s+[^>]*?src="([^"]+\.js)"[^>]*?>\s*<\/script>/g;
-    htmlContent = htmlContent.replace(scriptTagRegex, (match, src) => {
-        if (fileContentMap.has(src)) {
-            return `<script>${fileContentMap.get(src)}</script>`;
-        }
-        return match;
     });
 
     return htmlContent;
