@@ -524,12 +524,12 @@ export default function PolyglotStudio() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
           {/* Editor Panel */}
           <div className="flex flex-col h-full">
              <div className="flex items-center border-b border-t h-12">
-                <ScrollArea className="h-full whitespace-nowrap" orientation="horizontal">
-                   <div className="flex h-full">
+                <div className="flex-1 overflow-x-auto overflow-y-hidden">
+                   <div className="flex">
                     {openFileIds.map(fileId => {
                         const file = files.find(f => f.id === fileId);
                         if(!file) return null;
@@ -538,12 +538,12 @@ export default function PolyglotStudio() {
                               key={fileId}
                               onClick={() => handleFileSelect(fileId)}
                               className={cn(
-                                  "flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-full",
+                                  "flex items-center gap-2 px-4 py-2 border-r cursor-pointer h-12 flex-shrink-0",
                                   activeFileId === fileId && activeView === 'editor' ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                               )}
                           >
                           <FileText className="w-4 h-4" />
-                          <span>{file.name}</span>
+                          <span className="truncate">{file.name}</span>
                           <Button variant="ghost" size="icon" className="w-6 h-6 -mr-2" onClick={(e) => { e.stopPropagation(); handleCloseTab(fileId)}}>
                               <X className="w-4 h-4"/>
                           </Button>
@@ -551,7 +551,7 @@ export default function PolyglotStudio() {
                         )
                     })}
                    </div>
-                </ScrollArea>
+                </div>
             </div>
             <div className="flex-1 relative">
                  <Textarea
@@ -637,5 +637,3 @@ export default function PolyglotStudio() {
     </div>
   );
 }
-
-    
