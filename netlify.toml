@@ -1,0 +1,4 @@
+toml
+[build]
+  command = "npm run build" # Or "yarn build"
+  publish = ".next"
